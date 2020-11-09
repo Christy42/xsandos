@@ -44,11 +44,13 @@ class Game:
             return self._squares[1][1]
         return False
 
-    def start_game(self):
-        print('New game')
+    def start_game(self, verbose=False):
+        if verbose:
+            print('New game')
         xs_turn = True
         for i in range(9):
-            self.print_board()
+            if verbose:
+                self.print_board()
             valid_move = False
             row, col = 0, 0
             while not valid_move:
@@ -66,14 +68,23 @@ class Game:
             game_over = self.check_win()
             if game_over == Square.Xs:
                 print("X Win")
-                self.print_board()
+                self._x_ai.win()
+                self._o_ai.loss()
+                if verbose:
+                    self.print_board()
                 return Result.Xs
             if game_over == Square.Os:
                 print("O Win")
-                self.print_board()
+                self._x_ai.loss()
+                self._o_ai.win()
+                if verbose:
+                    self.print_board()
                 return Result.Os
         print("Draw")
-        self.print_board()
+        self._x_ai.draw()
+        self._o_ai.draw()
+        if verbose:
+            self.print_board()
         return Result.DRAW
 
     def print_board(self):
@@ -95,12 +106,23 @@ class BruteForceAI:
     def __init__(self, game: Game, side: Side):
         self._game = game
         self._side = side
+        
     def move(self):
         for i in range(3):
             for j in range(3):
                 if self._game.squares[i][j] == Square.BLANK:
                     return i, j
 
+    def win(self):
+        pass
+
+    def draw(self):
+        pass
+
+    def loss(self):
+        pass
+
+    
 class RandomAI:
     def __init__(self, game: Game, side: Side):
         self._game = game
@@ -119,7 +141,16 @@ class RandomAI:
         assert len(rows) > 0, "Board is full."
         random_index = np.random.choice(len(rows))
         return rows[random_index], cols[random_index]
-        
+
+    def win(self):
+        pass
+
+    def draw(self):
+        pass
+
+    def loss(self):
+        pass
+    
                 
 class NewellSimonAI:
     def __init__(self, game: Game, side: Side):
@@ -248,6 +279,116 @@ class NewellSimonAI:
                 elif self._game.squares[i][j] != Square.BLANK:
                     self._board[i,j] = -1
 
+    def win(self):
+        pass
+
+    def draw(self):
+        pass
+
+    def loss(self):
+        pass
                     
-b = Game(NewellSimonAI, RandomAI)
-b.start_game()
+
+class StateLearnerAI:
+    
+    states_seen  = {}
+    states_won   = {}
+    states_drawn = {}
+    states_lost  = {}
+
+    def __init__(self, game: Game, side: Side):
+        self._game = game
+        self._side = side
+        self._my_square = (Square.Xs if self._side == Side.Xs else Square.Os)
+        self._board = np.zeros((3,3), dtype='int')
+        self.this_game_states = []
+
+    def move(self):
+        board_tuple = self.get_board_tuple()
+        move = self.get_best_historical_move(board_tuple)
+        board_list = list(board_tuple)
+        board_list[move[0]*3 + move[1]] = 'M'
+        self.this_game_states.append(tuple(board_list))
+        return move
+
+    def get_position_rating(self, board_tuple):
+        if board_tuple not in self.states_seen:
+            return 0
+        num_times_seen  = self.states_seen[board_tuple]
+        num_times_won   = self.states_won[board_tuple]
+        num_times_drawn = self.states_drawn[board_tuple]
+        num_times_lost  = self.states_lost[board_tuple]
+
+        return (num_times_won * 3. + num_times_drawn - num_times_lost) / num_times_seen
+
+    def get_best_historical_move(self, board_tuple):
+        best_pos = None
+        best_ranking = None
+        board_list = list(board_tuple)
+        for pos in range(9):
+            if board_list[pos] != ' ':
+                continue
+            board_list[pos] = 'M'
+            pos_ranking = self.get_position_rating(tuple(board_list))
+            board_list[pos] = ' '
+            if best_ranking is None or pos_ranking > best_ranking:
+                best_pos = pos
+                best_ranking = pos_ranking
+        return best_pos // 3, best_pos % 3
+
+    def get_board_tuple(self):
+        board_list = []
+        for i in range(3):
+            for j in range(3):
+                square = ' '
+                if self._game.squares[i][j] == self._my_square:
+                    square = 'M'  # my square
+                elif self._game.squares[i][j] != Square.BLANK:
+                    square = 'E'  # enemy square
+                board_list.append(square)
+        return tuple(board_list)
+
+    def win(self):
+        self.update_num_seen()
+        for state in self.this_game_states:
+            self.states_won[state] += 1
+
+    def draw(self):
+        self.update_num_seen()
+        for state in self.this_game_states:
+            self.states_drawn[state] += 1
+
+    def loss(self):
+        self.update_num_seen()
+        for state in self.this_game_states:
+            #print('Recording: {}'.format(state))
+            self.states_lost[state] += 1
+
+    def update_num_seen(self):
+        for state in self.this_game_states:
+            if state not in self.states_seen:
+                self.states_seen[state]  = 1
+                self.states_won[state]   = 0
+                self.states_drawn[state] = 0
+                self.states_lost[state]  = 0
+        
+
+print('X - NewellSimonAI; O - StateLearnerAI')
+for i in range(50):
+    b = Game(NewellSimonAI, StateLearnerAI)
+    b.start_game(verbose=False)
+
+print('\n\nX - StateLearnerAI; O - NewellSimonAI')
+for i in range(30):
+    b = Game(StateLearnerAI, NewellSimonAI)
+    b.start_game(verbose=False)
+
+print('\n\nX - StateLearnerAI; O - StateLearnerAI')
+for i in range(30):
+    b = Game(StateLearnerAI, StateLearnerAI)
+    b.start_game(verbose=False)
+
+print('\n\nX - RandomAI; O - StateLearnerAI')
+for i in range(1000):
+    b = Game(RandomAI, StateLearnerAI)
+    b.start_game(verbose=False)
