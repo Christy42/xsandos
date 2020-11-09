@@ -1,5 +1,8 @@
 from enum import Enum
 
+class MoveType(Enum):
+    MOVE = 1
+    JUMP = 2
 
 class Colour(Enum):
     BLANK = 1
@@ -46,6 +49,10 @@ class Piece:
         return self._position
 
     @property
+    def direction(self):
+        return self._direction
+
+    @property
     def king(self):
         return self._king
 
@@ -81,44 +88,67 @@ class Game:
                        Piece(Colour.BLACK, [6, 5]), Piece(Colour.BLACK, [6, 7]), Piece(Colour.BLACK, [5, 0]),
                        Piece(Colour.BLACK, [5, 2]), Piece(Colour.BLACK, [5, 4]), Piece(Colour.BLACK, [5, 6])]
 
-    def move_piece(self, piece, direction):
+    def check_move(self, piece, direction):
         # Piece already taken
         if piece.position == [-1, -1]:
-            return False
+            return False, None
         # Piece moving backwards illegally
         if direction == (MoveDirection.UP_RIGHT or MoveDirection.UP_LEFT) and piece.colour == Colour.BLACK and not piece.king:
-            return False
+            return False, None
         if direction == (MoveDirection.DOWN_RIGHT or MoveDirection.DOWN_LEFT) and piece.colour == Colour.WHITE and not piece.king:
-            return False
+            return False, None
         # Move blocked
         new_square = [sum(x) for x in zip(piece.position, [1, 1] if direction == MoveDirection.UP_RIGHT else
         [1, -1] if direction == MoveDirection.UP_LEFT else [-1, 1] if direction == MoveDirection.DOWN_RIGHT else [-1, -1])]
         # new square off the board
         if 0 > new_square[0] or new_square[0] > 7 or 0 > new_square[1] or new_square[1] > 7:
-            return False
+            return False, None
         # Can't move through square with own piece
         if self._board.state[new_square[0]][new_square[1]] == piece.colour:
-            return False
+            return False, None
         # Other colour
         if self._board.state[new_square[0]][new_square[1]] == piece.other_colour:
             jump_square = [sum(x) for x in zip(new_square, [1, 1] if direction == MoveDirection.UP_RIGHT else
         [1, -1] if direction == MoveDirection.UP_LEFT else [-1, 1] if direction == MoveDirection.DOWN_RIGHT else [-1, -1])]
             # can't jump off the board
             if 0 > jump_square[0] or jump_square[0] > 7 or 0 > jump_square[1] or jump_square[1] > 7:
-                return False
+                return False, None
             # Can't jump onto square with own piece
             if self._board.state[new_square[0]][new_square[1]] == piece.colour:
-                return False
+                return False, None
             # jump blocked
             if self._board.state[new_square[0]][new_square[1]] == piece.other_colour:
-                return False
-            # TODO: Do jump
-            return True
-        self._board.state[new_square[0]][new_square[1]] = piece.colour
-        self._board.state[piece.position[0]][piece.position[1]] = Colour.BLANK
-        piece.move(direction)
+                return False, None
+            return True, MoveType
         return True
 
+    def make_move(self, piece, direction):
+        allowed, m_type = self.check_move(piece, direction)
+        if allowed:
+            if m_type == MoveType.MOVE:
+                self._board.state[piece.position[0]][piece.position[1]] = Colour.BLANK
+                piece.move(direction)
+                return True
+            if m_type == MoveType.JUMP:
+                # OK. I can do a jump, how to give the option of multiple jumps?  Maybe leave and figure out later
+                # TODO: how to check which piece was taken and remove them?
+                self._board.state[piece.position[0]][piece.position[1]] = Colour.BLANK
+                piece.move(direction)
+                piece.move(direction)
+                if self.check_piece_can_take(piece):
+                    pass
+                return True
+        return False
+
+    def check_piece_can_take(self, piece: Piece):
+        for element in [MoveDirection.DOWN_RIGHT, MoveDirection.DOWN_LEFT, MoveDirection.UP_LEFT, MoveDirection.UP_RIGHT]:
+            if (element == MoveDirection.DOWN_LEFT or element == MoveDirection.DOWN_RIGHT) and piece.direction == Direction.UP and not piece.king:
+                # Can't take in the wrong direction
+                continue
+            new_square = [sum(x) for x in zip(piece.position, [1, 1] if element == MoveDirection.UP_RIGHT else
+            [1, -1] if element == MoveDirection.UP_LEFT else [-1, 1] if element == MoveDirection.DOWN_RIGHT else [
+                -1, -1])]
+            if self._board.state[new_square[0]][new_square[1]]
     # TODO:  Need to be able to check the direction that each piece is meant to be travelling in.  Guess white means up
     def check_take_avail(self, side):
         for i in range(8):
