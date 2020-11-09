@@ -319,7 +319,7 @@ class StateLearnerAI:
         num_times_drawn = self.states_drawn[board_tuple]
         num_times_lost  = self.states_lost[board_tuple]
 
-        return (num_times_won * 3. + num_times_drawn - num_times_lost) / num_times_seen
+        return (num_times_won * 3. + num_times_drawn - 200*num_times_lost) / num_times_seen
 
     def get_best_historical_move(self, board_tuple):
         best_pos = None
@@ -389,6 +389,6 @@ for i in range(30):
     b.start_game(verbose=False)
 
 print('\n\nX - RandomAI; O - StateLearnerAI')
-for i in range(1000):
+for i in range(100000):
     b = Game(RandomAI, StateLearnerAI)
     b.start_game(verbose=False)
