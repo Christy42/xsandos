@@ -88,9 +88,9 @@ class Game:
         if piece.position == [-1, -1]:
             return False, None
         # Piece moving backwards illegally
-        if direction not in piece.direction and not piece.king:
+        if direction not in piece.direction:
             return False, None
-        if direction not in piece.direction and not piece.king:
+        if direction not in piece.direction:
             return False, None
         # Move blocked
         new_square = self.adj_square(piece.position, direction)
@@ -121,6 +121,8 @@ class Game:
             if m_type == MoveType.MOVE:
                 self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
                 piece.move(direction)
+                if piece.position[0] in [0, 7]:
+                    piece.king_piece()
                 return True
             if m_type == MoveType.JUMP:
                 new_square = self.adj_square(piece.position, direction)
@@ -131,7 +133,15 @@ class Game:
                         piece.remove_piece()
                 piece.move(direction)
                 piece.move(direction)
-                # TODO: multi jump
+                # OK, bad abstraction here.  Should only be a king if in the last,
+                # This is first and last how the only way to move to the first row is if already a king
+                # making the same piece a king repeatedly has no effect. should be cleaner
+                if piece.position[0] in [0, 7]:
+                    piece.king_piece()
+                # TODO: multi jump, must be done if possible
+                if self.check_piece_can_take(piece):
+                    # TODO: Force AI to make another move that involves this piece and a jump
+                    pass
                 if self.check_piece_can_take(piece):
                     pass
                 return True
@@ -140,7 +150,7 @@ class Game:
     def check_piece_can_take(self, piece: Piece):
         # Check 4 directions
         for element in Direction:
-            if element not in piece.direction and not piece.king:
+            if element not in piece.direction:
                 # Can't take in the wrong direction
                 continue
             new_square = self.adj_square(piece.position, element)
@@ -176,7 +186,7 @@ class Game:
                 new_square = self.adj_square(piece.position, direction)
                 if min(new_square) < 0 or max(new_square) > 7:
                     continue
-                if direction not in piece.direction and not piece.king:
+                if direction not in piece.direction:
                     continue
                 if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
                     return True
