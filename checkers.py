@@ -1,6 +1,12 @@
 from enum import Enum
 
 
+class Result(Enum):
+    WHITE = 1
+    BLACK = 2
+    DRAW = 3
+
+
 class MoveType(Enum):
     MOVE = 1
     JUMP = 2
@@ -69,6 +75,7 @@ class Game:
                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
                       [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
+        self.turns_since_last_piece_taken = 0
         self._black_ai = Black_AIClass(self, Colour.BLACK)
         self._white_ai = White_AIClass(self, Colour.WHITE)
         self._pieces = {Colour.WHITE:
@@ -119,12 +126,14 @@ class Game:
         allowed, m_type = self.check_move(piece, direction)
         if allowed:
             if m_type == MoveType.MOVE:
+                self.turns_since_last_piece_taken += 1
                 self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
                 piece.move(direction)
                 if piece.position[0] in [0, 7]:
                     piece.king_piece()
                 return True
             if m_type == MoveType.JUMP:
+                self.turns_since_last_piece_taken = 0
                 new_square = self.adj_square(piece.position, direction)
                 self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
                 self._board[new_square[0]][new_square[1]] = Colour.BLANK
@@ -181,7 +190,7 @@ class Game:
             if piece.position[0] < 0:
                 continue
             if self.check_piece_can_take(piece):
-                return True
+                return False
             for direction in Direction:
                 new_square = self.adj_square(piece.position, direction)
                 if min(new_square) < 0 or max(new_square) > 7:
@@ -189,5 +198,34 @@ class Game:
                 if direction not in piece.direction:
                     continue
                 if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
-                    return True
-        return False
+                    return False
+        if self.turns_since_last_piece_taken >= 100:
+            return Result.DRAW
+        return Result.WHITE if colour == Colour.BLACK else Result.BLACK
+
+    def start_game(self):
+        blacks_turn = True
+        while True:
+            valid_move = False
+            piece = self._pieces[Colour.WHITE][0]
+            direction = Direction.DOWN_LEFT
+            while not valid_move:
+                if blacks_turn:
+                    piece, direction = self._black_ai.move(must_jump=self.check_jump_required(Colour.BLACK),
+                                                           ind_piece=None)
+                else:
+                    piece, direction = self._white_ai.move(must_jump=self.check_jump_required(Colour.BLACK),
+                                                           ind_piece=None)
+                valid_move = self.check_move(piece, direction)
+            self.make_move(piece, direction)
+            blacks_turn = not blacks_turn
+            game_over = self.check_game_lost(Colour.BLACK if blacks_turn else Colour.WHITE)
+            if game_over == Result.WHITE:
+                print("White Win")
+                return Result.WHITE
+            if game_over == Result.BLACK:
+                print("Black Win")
+                return Result.BLACK
+            if game_over == Result.DRAW:
+                print("Draw")
+                return Result.DRAW
