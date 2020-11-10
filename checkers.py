@@ -57,10 +57,9 @@ class Piece:
         self._position = [-1, -1]
 
 
-# Needed?
-class Board:
-    def __init__(self):
-        self.state = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
+class Game:
+    def __init__(self, Black_AIClass, White_AIClass):
+        self._board = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
                       [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
                       [Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
                       [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
@@ -68,11 +67,6 @@ class Board:
                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
                       [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
-
-
-class Game:
-    def __init__(self, Black_AIClass, White_AIClass):
-        self._board = Board()
         self._black_ai = Black_AIClass(self, Colour.BLACK)
         self._white_ai = White_AIClass(self, Colour.WHITE)
         self._pieces = {Colour.WHITE:
@@ -102,17 +96,17 @@ class Game:
         if min(new_square) < 0 or max(new_square) > 7:
             return False, None
         # Can't move through square with own piece
-        if self._board.state[new_square[0]][new_square[1]] == piece.colour:
+        if self._board[new_square[0]][new_square[1]] == piece.colour:
             return False, None
         # Other colour
-        if self._board.state[new_square[0]][new_square[1]] == piece.other_colour:
+        if self._board[new_square[0]][new_square[1]] == piece.other_colour:
             jump_square = [sum(x) for x in zip(new_square, [1, 1] if direction == Direction.UP_RIGHT else
         [1, -1] if direction == Direction.UP_LEFT else [-1, 1] if direction == Direction.DOWN_RIGHT else [-1, -1])]
             # can't jump off the board
             if 0 > jump_square[0] or jump_square[0] > 7 or 0 > jump_square[1] or jump_square[1] > 7:
                 return False, None
             # Can't jump onto square with any piece
-            if self._board.state[new_square[0]][new_square[1]] != Colour.BLANK:
+            if self._board[new_square[0]][new_square[1]] != Colour.BLANK:
                 return False, None
             return True, MoveType
         return True
@@ -121,13 +115,13 @@ class Game:
         allowed, m_type = self.check_move(piece, direction)
         if allowed:
             if m_type == MoveType.MOVE:
-                self._board.state[piece.position[0]][piece.position[1]] = Colour.BLANK
+                self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
                 piece.move(direction)
                 return True
             if m_type == MoveType.JUMP:
                 new_square = self.adj_square(piece.position, direction)
-                self._board.state[piece.position[0]][piece.position[1]] = Colour.BLANK
-                self._board.state[new_square[0]][new_square[1]] = Colour.BLANK
+                self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
+                self._board[new_square[0]][new_square[1]] = Colour.BLANK
                 for piece in self._pieces[piece.other_colour]:
                     if piece.position == new_square:
                         piece.remove_piece()
@@ -150,8 +144,8 @@ class Game:
             # Check these squares are on the board
             if min(jump_square) < 0 or max(jump_square) > 8:
                 continue
-            if (self._board.state[new_square[0]][new_square[1]] == piece.other_colour and
-               self._board.state[jump_square[0]][jump_square[1]] == Colour.BLANK):
+            if (self._board[new_square[0]][new_square[1]] == piece.other_colour and
+               self._board[jump_square[0]][jump_square[1]] == Colour.BLANK):
                 return True
         return False
 
@@ -174,6 +168,6 @@ class Game:
                     continue
                 if direction not in piece.direction and not piece.king:
                     continue
-                if self._board.state[new_square[0]][new_square[1]] == Colour.BLANK:
+                if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
                     return True
         return False
