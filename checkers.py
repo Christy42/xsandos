@@ -23,6 +23,7 @@ class Piece:
     def __init__(self, colour, position):
         self._colour = colour
         self._position = position
+        # Just kept for learning purposes
         self._king = False
         self._direction = [Direction.UP_RIGHT, Direction.UP_LEFT] if colour == Colour.WHITE else \
             [Direction.DOWN_RIGHT, Direction.DOWN_LEFT]
@@ -51,6 +52,7 @@ class Piece:
         return self._king
 
     def king_piece(self):
+        self._direction = [Direction.UP_RIGHT, Direction.UP_LEFT, Direction.DOWN_RIGHT, Direction.DOWN_LEFT]
         self._king = True
 
     def remove_piece(self):
@@ -86,9 +88,9 @@ class Game:
         if piece.position == [-1, -1]:
             return False, None
         # Piece moving backwards illegally
-        if direction == (Direction.UP_RIGHT or Direction.UP_LEFT) and piece.colour == Colour.BLACK and not piece.king:
+        if direction not in piece.direction and not piece.king:
             return False, None
-        if direction == (Direction.DOWN_RIGHT or Direction.DOWN_LEFT) and piece.colour == Colour.WHITE and not piece.king:
+        if direction not in piece.direction and not piece.king:
             return False, None
         # Move blocked
         new_square = self.adj_square(piece.position, direction)
@@ -100,16 +102,18 @@ class Game:
             return False, None
         # Other colour
         if self._board[new_square[0]][new_square[1]] == piece.other_colour:
-            jump_square = [sum(x) for x in zip(new_square, [1, 1] if direction == Direction.UP_RIGHT else
-        [1, -1] if direction == Direction.UP_LEFT else [-1, 1] if direction == Direction.DOWN_RIGHT else [-1, -1])]
+            jump_square = self.adj_square(new_square, direction)
             # can't jump off the board
-            if 0 > jump_square[0] or jump_square[0] > 7 or 0 > jump_square[1] or jump_square[1] > 7:
+            if min(jump_square) < 0 or max(jump_square) > 7:
                 return False, None
             # Can't jump onto square with any piece
             if self._board[new_square[0]][new_square[1]] != Colour.BLANK:
                 return False, None
-            return True, MoveType
-        return True
+            return True, MoveType.JUMP
+        # Player must make a jump if required
+        if self.check_jump_required(piece.colour):
+            return False, None
+        return True, MoveType.MOVE
 
     def make_move(self, piece, direction):
         allowed, m_type = self.check_move(piece, direction)
@@ -146,6 +150,12 @@ class Game:
                 continue
             if (self._board[new_square[0]][new_square[1]] == piece.other_colour and
                self._board[jump_square[0]][jump_square[1]] == Colour.BLANK):
+                return True
+        return False
+
+    def check_jump_required(self, colour):
+        for piece in self._pieces[colour]:
+            if self.check_piece_can_take(piece):
                 return True
         return False
 
