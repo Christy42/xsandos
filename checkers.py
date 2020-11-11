@@ -22,10 +22,10 @@ class Colour(Enum):
 
 
 class Direction(Enum):
-    UP_RIGHT = 1  # [1, 1]
-    UP_LEFT = 2   # [1, -1]
-    DOWN_RIGHT = 3  # [-1, 1]
-    DOWN_LEFT = 4  # [-1, -1]
+    UP_RIGHT = 1  # [-1, 1]
+    UP_LEFT = 2   # [-1, -1]
+    DOWN_RIGHT = 3  # [1, 1]
+    DOWN_LEFT = 4  # [1, -1]
 
 
 class Piece:
@@ -34,7 +34,7 @@ class Piece:
         self._position = position
         # Just kept for learning purposes
         self._king = False
-        self._direction = [Direction.UP_RIGHT, Direction.UP_LEFT] if colour == Colour.WHITE else \
+        self._direction = [Direction.UP_RIGHT, Direction.UP_LEFT] if colour == Colour.BLACK else \
             [Direction.DOWN_RIGHT, Direction.DOWN_LEFT]
 
     @property
@@ -42,7 +42,7 @@ class Piece:
         return self._colour
 
     def move(self, direction: Direction):
-        self._position = Game.adj_square(self._position, direction)
+        self._position = Checkers.adj_square(self._position, direction)
 
     @property
     def other_colour(self):
@@ -68,7 +68,7 @@ class Piece:
         self._position = [-1, -1]
 
 
-class Game:
+class Checkers:
     def __init__(self, Black_AIClass, White_AIClass):
         self._board = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
                       [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
@@ -198,9 +198,9 @@ class Game:
 
     @staticmethod
     def adj_square(place, direc):
-        return [sum(x) for x in zip(place, [1, 1] if direc == Direction.UP_RIGHT else
-                [1, -1] if direc == Direction.UP_LEFT else
-                [-1, 1] if direc == Direction.DOWN_RIGHT else [-1, -1])]
+        return [sum(x) for x in zip(place, [-1, 1] if direc == Direction.UP_RIGHT else
+                [-1, -1] if direc == Direction.UP_LEFT else
+                [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_game_lost(self, colour):
         for piece in self._pieces[colour]:
@@ -223,9 +223,9 @@ class Game:
 
     def start_game(self, verbose=False):
         blacks_turn = True
-        count = 0
+        turn = 0
         while True:
-            count += 1
+            turn += 1
             valid_move = False
             piece = self._pieces[Colour.WHITE][0]
             direction = Direction.DOWN_LEFT
@@ -240,6 +240,9 @@ class Game:
                 valid_move, style = self.check_move(piece, direction)
             self.make_move(piece, direction)
             if verbose:
+                print("")
+                print("")
+                print(turn)
                 for i in range(8):
                     print(self._board[i])
             blacks_turn = not blacks_turn
@@ -256,7 +259,7 @@ class Game:
 
 
 class RandomAI:
-    def __init__(self, game: Game, colour: Colour):
+    def __init__(self, game: Checkers, colour: Colour):
         self._game = game
         self._colour = colour
 
@@ -303,5 +306,5 @@ class RandomAI:
         return piece, direction
 
 
-game = Game(RandomAI, RandomAI)
-game.start_game()
+checkers = Checkers(RandomAI, RandomAI)
+checkers.start_game(verbose=True)
