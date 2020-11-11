@@ -1,4 +1,7 @@
+from colorama import Style
+from colorama import Fore
 from enum import Enum
+import random
 
 
 class Result(Enum):
@@ -90,7 +93,14 @@ class Game:
                              Piece(Colour.BLACK, [5, 2]), Piece(Colour.BLACK, [5, 4]), Piece(Colour.BLACK, [5, 6])]
                         }
 
+    @property
+    def pieces(self):
+        return self._pieces
+
     def check_move(self, piece, direction):
+        print("move check")
+        print(piece.position)
+        print(direction)
         # Piece already taken
         if piece.position == [-1, -1]:
             return False, None
@@ -109,13 +119,18 @@ class Game:
             return False, None
         # Other colour
         if self._board[new_square[0]][new_square[1]] == piece.other_colour:
+            print("Jump possibility")
             jump_square = self.adj_square(new_square, direction)
+            print(jump_square)
             # can't jump off the board
             if min(jump_square) < 0 or max(jump_square) > 7:
+                print("off the board")
                 return False, None
             # Can't jump onto square with any piece
-            if self._board[new_square[0]][new_square[1]] != Colour.BLANK:
+            if self._board[jump_square[0]][jump_square[1]] != Colour.BLANK:
+                print("wrong colour")
                 return False, None
+            print(piece.position)
             return True, MoveType.JUMP
         # Player must make a jump if required
         if self.check_jump_required(piece.colour):
@@ -124,11 +139,16 @@ class Game:
 
     def make_move(self, piece, direction):
         allowed, m_type = self.check_move(piece, direction)
+        print("XVAL")
         if allowed:
             if m_type == MoveType.MOVE:
                 self.turns_since_last_piece_taken += 1
+                print("moving")
+                print(piece.position)
                 self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
                 piece.move(direction)
+                print(piece.position)
+                self._board[piece.position[0]][piece.position[1]] = piece.colour
                 if piece.position[0] in [0, 7]:
                     piece.king_piece()
                 return True
@@ -137,11 +157,15 @@ class Game:
                 new_square = self.adj_square(piece.position, direction)
                 self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
                 self._board[new_square[0]][new_square[1]] = Colour.BLANK
-                for piece in self._pieces[piece.other_colour]:
-                    if piece.position == new_square:
-                        piece.remove_piece()
+
+                for piece_taken in self._pieces[piece.other_colour]:
+                    if piece_taken.position == new_square:
+                        piece_taken.remove_piece()
                 piece.move(direction)
+                print(piece.position)
                 piece.move(direction)
+                print(piece.position)
+                self._board[piece.position[0]][piece.position[1]] = piece.colour
                 # OK, bad abstraction here.  Should only be a king if in the last,
                 # This is first and last how the only way to move to the first row is if already a king
                 # making the same piece a king repeatedly has no effect. should be cleaner
@@ -150,7 +174,15 @@ class Game:
                 # TODO: multi jump, must be done if possible
                 if self.check_piece_can_take(piece):
                     # TODO: Force AI to make another move that involves this piece and a jump
-                    pass
+                    valid_move = False
+                    while not valid_move:
+                        if piece.colour == Colour.BLACK:
+                            piece, direction = self._black_ai.move(must_jump=True, ind_piece=piece)
+                        else:
+                            piece, direction = self._white_ai.move(must_jump=True, ind_piece=piece)
+                        valid_move = self.check_move(piece, direction)
+                    self.make_move(piece, direction)
+
                 if self.check_piece_can_take(piece):
                     pass
                 return True
@@ -165,7 +197,7 @@ class Game:
             new_square = self.adj_square(piece.position, element)
             jump_square = self.adj_square(new_square, element)
             # Check these squares are on the board
-            if min(jump_square) < 0 or max(jump_square) > 8:
+            if min(jump_square) < 0 or max(jump_square) > 7:
                 continue
             if (self._board[new_square[0]][new_square[1]] == piece.other_colour and
                self._board[jump_square[0]][jump_square[1]] == Colour.BLANK):
@@ -205,18 +237,24 @@ class Game:
 
     def start_game(self):
         blacks_turn = True
+        count = 0
         while True:
+            count += 1
             valid_move = False
             piece = self._pieces[Colour.WHITE][0]
             direction = Direction.DOWN_LEFT
+            print("TURN " + str(count))
             while not valid_move:
                 if blacks_turn:
                     piece, direction = self._black_ai.move(must_jump=self.check_jump_required(Colour.BLACK),
                                                            ind_piece=None)
                 else:
-                    piece, direction = self._white_ai.move(must_jump=self.check_jump_required(Colour.BLACK),
+                    piece, direction = self._white_ai.move(must_jump=self.check_jump_required(Colour.WHITE),
                                                            ind_piece=None)
-                valid_move = self.check_move(piece, direction)
+
+                valid_move, style = self.check_move(piece, direction)
+                print("valid_move")
+                print(valid_move)
             self.make_move(piece, direction)
             blacks_turn = not blacks_turn
             game_over = self.check_game_lost(Colour.BLACK if blacks_turn else Colour.WHITE)
@@ -229,3 +267,73 @@ class Game:
             if game_over == Result.DRAW:
                 print("Draw")
                 return Result.DRAW
+
+
+class RandomAI:
+    def __init__(self, game: Game, colour: Colour):
+        self._game = game
+        self._colour = colour
+
+    def move(self, must_jump=False, ind_piece=None):
+        pot_pieces = {}
+        if ind_piece:
+            pot_pieces = {ind_piece: []}
+            for direction in Direction:
+                value, style = self._game.check_move(ind_piece, direction)
+                # should always be a jump required if a piece is mandated to be used but for completeness
+                if not must_jump and value:
+                    pot_pieces[ind_piece].append(direction)
+                elif must_jump and style == MoveType.JUMP:
+                    pot_pieces[ind_piece].append(direction)
+        elif must_jump:
+            for piece in self._game.pieces[self._colour]:
+                if piece.position == [-1, -1]:
+                    continue
+                if self._game.check_piece_can_take(piece):
+                    pot_pieces.update({piece: []})
+
+                for poss in pot_pieces:
+                    for direction in Direction:
+                        value, style = self._game.check_move(poss, direction)
+                        if style == MoveType.JUMP:
+                            pot_pieces[poss].append(direction)
+        else:
+            for piece in self._game.pieces[self._colour]:
+                if piece.position == [-1, -1]:
+                    continue
+                for direction in Direction:
+                    value, style = self._game.check_move(piece, direction)
+                    if value:
+                        if piece not in pot_pieces:
+                            pot_pieces[piece] = [direction]
+                        else:
+                            pot_pieces[piece].append([direction])
+        if len(pot_pieces) == 0:
+            print(must_jump)
+            print(ind_piece)
+            print(self._colour)
+            print(self._game.check_jump_required(self._colour))
+            for i in range(8):
+                print(self._game._board[i])
+            raise Exception("No valid move found")
+        piece = random.choice(list(pot_pieces.keys()))
+        print("BREAK")
+        print("piece " + str(piece))
+        print("pot directions " + str(pot_pieces[piece]))
+        print("must jump " + str(must_jump))
+        print(ind_piece)
+        print("colour " + str(self._colour))
+        print(len([piece for piece in self._game.pieces[self._colour] if piece.position[0] >= 0]))
+        print(piece.position)
+        for i in range(8):
+            print(self._game._board[i])
+        direction = random.choice(pot_pieces[piece])
+        print("chosen direction " + str(direction))
+
+        # input("Press Enter to continue...")
+
+        return piece, direction
+
+
+game = Game(RandomAI, RandomAI)
+game.start_game()
