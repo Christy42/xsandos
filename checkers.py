@@ -4,6 +4,17 @@ from enum import Enum
 import random
 
 
+def colored(r, g, b, text):
+    return "\033[38;2;{};{};{}m{} \033[38;2;255;255;255m".format(r, g, b, text)
+
+
+def sum_l(lister):
+    ans = ''
+    for element in lister:
+        ans = ans + ', ' + element
+    return ans[2:]
+
+
 class Result(Enum):
     WHITE = 1
     BLACK = 2
@@ -29,7 +40,7 @@ class Direction(Enum):
 
 
 class Piece:
-    def __init__(self, colour, position):
+    def __init__(self, colour: Colour, position: list):
         self._colour = colour
         self._position = position
         # Just kept for learning purposes
@@ -71,13 +82,13 @@ class Piece:
 class Checkers:
     def __init__(self, Black_AIClass, White_AIClass):
         self._board = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
-                      [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
-                      [Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
-                      [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
-                      [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
-                      [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
-                      [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
-                      [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
+                       [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
+                       [Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
+                       [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
+                       [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
+                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
+                       [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
+                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
         self.turns_since_last_piece_taken = 0
         self._black_ai = Black_AIClass(self, Colour.BLACK)
         self._white_ai = White_AIClass(self, Colour.WHITE)
@@ -97,16 +108,13 @@ class Checkers:
     def pieces(self):
         return self._pieces
 
-    def check_move(self, piece, direction):
+    def check_move(self, piece: Piece, direction: Direction):
         # Piece already taken
         if piece.position == [-1, -1]:
             return False, None
         # Piece moving backwards illegally
         if direction not in piece.direction:
             return False, None
-        if direction not in piece.direction:
-            return False, None
-        # Move blocked
         new_square = self.adj_square(piece.position, direction)
         # new square off the board
         if min(new_square) < 0 or max(new_square) > 7:
@@ -114,7 +122,7 @@ class Checkers:
         # Can't move through square with own piece
         if self._board[new_square[0]][new_square[1]] == piece.colour:
             return False, None
-        # Other colour
+        # Other colour, potential jump
         if self._board[new_square[0]][new_square[1]] == piece.other_colour:
             jump_square = self.adj_square(new_square, direction)
             # can't jump off the board
@@ -129,7 +137,7 @@ class Checkers:
             return False, None
         return True, MoveType.MOVE
 
-    def make_move(self, piece, direction):
+    def make_move(self, piece: Piece, direction: Direction):
         allowed, m_type = self.check_move(piece, direction)
         if allowed:
             if m_type == MoveType.MOVE:
@@ -157,9 +165,8 @@ class Checkers:
                 # making the same piece a king repeatedly has no effect. should be cleaner
                 if piece.position[0] in [0, 7]:
                     piece.king_piece()
-                # TODO: multi jump, must be done if possible
+                # TODO: Can a piece jump to the last line and immediately jump backwards???
                 if self.check_piece_can_take(piece):
-                    # TODO: Force AI to make another move that involves this piece and a jump
                     valid_move = False
                     while not valid_move:
                         if piece.colour == Colour.BLACK:
@@ -190,19 +197,19 @@ class Checkers:
                 return True
         return False
 
-    def check_jump_required(self, colour):
+    def check_jump_required(self, colour: Colour):
         for piece in self._pieces[colour]:
             if self.check_piece_can_take(piece):
                 return True
         return False
 
     @staticmethod
-    def adj_square(place, direc):
+    def adj_square(place: list, direc: Direction):
         return [sum(x) for x in zip(place, [-1, 1] if direc == Direction.UP_RIGHT else
                 [-1, -1] if direc == Direction.UP_LEFT else
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
-    def check_game_lost(self, colour):
+    def check_game_lost(self, colour: Colour):
         for piece in self._pieces[colour]:
             # The dead don't move
             if piece.position[0] < 0:
@@ -244,7 +251,9 @@ class Checkers:
                 print("")
                 print(turn)
                 for i in range(8):
-                    print(self._board[i])
+                    # print(self._board[i])
+                    new_row = [colored(255 if self._board[i][j]!=Colour.WHITE else 0, 255 if self._board[i][j]!=Colour.BLACK else 0, 255 if self._board[i][j]==Colour.BLANK else 0, str(self._board[i][j])) for j in range(8)]
+                    print(sum_l(new_row))
             blacks_turn = not blacks_turn
             game_over = self.check_game_lost(Colour.BLACK if blacks_turn else Colour.WHITE)
             if game_over == Result.WHITE:
