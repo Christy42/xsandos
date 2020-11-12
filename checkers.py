@@ -1,5 +1,4 @@
-from colorama import Style
-from colorama import Fore
+import numpy as np
 from enum import Enum
 import random
 
@@ -107,6 +106,10 @@ class Checkers:
     @property
     def pieces(self):
         return self._pieces
+
+    @property
+    def board(self):
+        return self._board
 
     def check_move(self, piece: Piece, direction: Direction):
         # Piece already taken
@@ -257,13 +260,16 @@ class Checkers:
             blacks_turn = not blacks_turn
             game_over = self.check_game_lost(Colour.BLACK if blacks_turn else Colour.WHITE)
             if game_over == Result.WHITE:
-                print("White Win")
+                if verbose:
+                    print("White Win")
                 return Result.WHITE
             if game_over == Result.BLACK:
-                print("Black Win")
+                if verbose:
+                    print("Black Win")
                 return Result.BLACK
             if game_over == Result.DRAW:
-                print("Draw")
+                if verbose:
+                    print("Draw")
                 return Result.DRAW
 
 
@@ -315,5 +321,88 @@ class RandomAI:
         return piece, direction
 
 
-checkers = Checkers(RandomAI, RandomAI)
-checkers.start_game(verbose=True)
+class StateLearnerAI:
+    states_seen = {}
+    states_won = {}
+    states_drawn = {}
+    states_lost = {}
+
+    def __init__(self, game: Checkers, side: Colour):
+        self._game = game
+        self._side = side
+        self._board = np.zeros((8, 8), dtype='int')
+        self.this_game_states = []
+
+    def move(self, must_jump=False, ind_piece=False):
+        board_tuple = self.get_board_tuple()
+        move = self.get_best_historical_move(board_tuple)
+        board_list = list(board_tuple)
+        board_list[move[0] * 3 + move[1]] = 'M'
+        self.this_game_states.append(tuple(board_list))
+        return move
+
+    def get_position_rating(self, board_tuple):
+        if board_tuple not in self.states_seen:
+            return 0
+        num_times_seen = self.states_seen[board_tuple]
+        num_times_won = self.states_won[board_tuple]
+        num_times_drawn = self.states_drawn[board_tuple]
+        num_times_lost = self.states_lost[board_tuple]
+
+        return (num_times_won * 3. + num_times_drawn - 200 * num_times_lost) / num_times_seen
+
+    def get_best_historical_move(self, board_tuple):
+        best_pos = None
+        best_ranking = None
+        board_list = list(board_tuple)
+        # TODO: Get a list of all possible moves and try them on a separate board
+        for pos in range(64):
+            if board_list[pos] != ' ':
+                continue
+            board_list[pos] = 'M'
+            pos_ranking = self.get_position_rating(tuple(board_list))
+            board_list[pos] = ' '
+            if best_ranking is None or pos_ranking > best_ranking:
+                best_pos = pos
+                best_ranking = pos_ranking
+        return best_pos // 8, best_pos % 8
+
+    def get_board_tuple(self):
+        board_list = []
+        for i in range(8):
+            for j in range(8):
+                square = ' '
+                if self._game.board[i][j] == self._side:
+                    square = 'M'  # my square
+                elif self._game.board[i][j] != Colour.BLANK:
+                    square = 'E'  # enemy square
+                board_list.append(square)
+        return tuple(board_list)
+
+    def win(self):
+        self.update_num_seen()
+        for state in self.this_game_states:
+            self.states_won[state] += 1
+
+    def draw(self):
+        self.update_num_seen()
+        for state in self.this_game_states:
+            self.states_drawn[state] += 1
+
+    def loss(self):
+        self.update_num_seen()
+        for state in self.this_game_states:
+            # print('Recording: {}'.format(state))
+            self.states_lost[state] += 1
+
+    def update_num_seen(self):
+        for state in self.this_game_states:
+            if state not in self.states_seen:
+                self.states_seen[state] = 1
+                self.states_won[state] = 0
+                self.states_drawn[state] = 0
+                self.states_lost[state] = 0
+
+
+checkers = Checkers(StateLearnerAI, RandomAI)
+checkers.start_game(verbose=False)
