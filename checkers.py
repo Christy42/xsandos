@@ -222,6 +222,8 @@ class Checkers:
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_game_lost(self, colour: Colour):
+        if self.turns_since_last_piece_taken >= 100:
+            return Result.DRAW
         for piece in self._pieces[colour]:
             # The dead don't move
             if piece.position[0] < 0:
@@ -236,8 +238,6 @@ class Checkers:
                     continue
                 if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
                     return False
-        if self.turns_since_last_piece_taken >= 100:
-            return Result.DRAW
         return Result.WHITE if colour == Colour.BLACK else Result.BLACK
 
     def start_game(self, verbose=False):
@@ -258,11 +258,12 @@ class Checkers:
 
                 valid_move, style = self.check_move(piece, direction)
             self.make_move(piece, direction)
-            print("TURN {}".format(turn))
-            if verbose:
+            if verbose or turn > 200:
                 print("")
                 print("")
+                print("XXXXX")
                 print(turn)
+                print(self.turns_since_last_piece_taken)
                 for i in range(8):
                     new_row = [colored(255 if self._board[i][j] != Colour.WHITE else 0, 255 if self._board[i][j] != Colour.BLACK else 0, 255 if self._board[i][j]==Colour.BLANK else 0, str(self._board[i][j])) for j in range(8)]
                     print(sum_l(new_row))
