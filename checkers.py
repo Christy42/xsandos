@@ -91,7 +91,7 @@ class Checkers:
                            [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
                            [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
                            [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
-
+        self._turn_count = 0
         self.turns_since_last_piece_taken = 0
         if Black_AIClass:
             self._black_ai = Black_AIClass(self, Colour.BLACK)
@@ -222,6 +222,14 @@ class Checkers:
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_game_lost(self, colour: Colour):
+        if self._turn_count > 30:
+            white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] > 0]
+            black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] > 0]
+            if len(white_pieces) > len(black_pieces):
+                return Result.WHITE
+            if len(black_pieces) > len(white_pieces):
+                return Result.BLACK
+            return Result.DRAW
         if self.turns_since_last_piece_taken >= 100:
             return Result.DRAW
         for piece in self._pieces[colour]:
@@ -242,9 +250,8 @@ class Checkers:
 
     def start_game(self, verbose=False):
         self._turn = Colour.BLACK
-        turn = 0
         while True:
-            turn += 1
+            self._turn_count += 1
             valid_move = False
             piece = self._pieces[Colour.WHITE][0]
             direction = Direction.DOWN_LEFT
@@ -258,11 +265,11 @@ class Checkers:
 
                 valid_move, style = self.check_move(piece, direction)
             self.make_move(piece, direction)
-            if verbose or turn > 200:
+            if verbose or self._turn_count > 1000:
                 print("")
                 print("")
                 print("XXXXX")
-                print(turn)
+                print(self._turn_count)
                 print(self.turns_since_last_piece_taken)
                 for i in range(8):
                     new_row = [colored(255 if self._board[i][j] != Colour.WHITE else 0, 255 if self._board[i][j] != Colour.BLACK else 0, 255 if self._board[i][j]==Colour.BLANK else 0, str(self._board[i][j])) for j in range(8)]
@@ -472,7 +479,7 @@ for i in range(100000):
         print(wins)
         print(draws)
         print(losses)
-    b = Checkers(RandomAI, StateLearnerAI)
+    b = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
     win = b.start_game(verbose=False)
     if win == Result.BLACK:
         wins += 1
