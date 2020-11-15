@@ -224,8 +224,8 @@ class Checkers:
 
     def check_game_lost(self, colour: Colour):
         if self._turn_count > 15:
-            white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] > 0]
-            black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] > 0]
+            white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] >= 0]
+            black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] >= 0]
             if len(white_pieces) > len(black_pieces):
                 return Result.WHITE
             if len(black_pieces) > len(white_pieces):
@@ -416,8 +416,10 @@ class StateLearnerAI:
                 game_check.make_move(rel_piece, direction)
                 new_board_tuple = self.get_board_tuple(game_check.board)
                 pos_ranking = self.get_position_rating(new_board_tuple)
-
-                if best_ranking is None or random.random() < math.exp(-pos_ranking / (2 * best_ranking)):
+                # print(-pos_ranking / (2 * max(best_ranking, 0.01)))
+                ranked = best_ranking if best_ranking else 0.1
+                # print(min(max(-pos_ranking / (2 * ranked), -100), 100))
+                if best_ranking is None or random.random() < math.exp(min(max(-pos_ranking / (2 * ranked), -100), 100)):
                     best_piece = piece
                     best_direction = direction
                     best_ranking = pos_ranking
@@ -467,7 +469,7 @@ class StateLearnerAI:
                 self.states_lost[state] = 0
 
 
-checkers = Checkers(Black_AIClass=StateLearnerAI, White_AIClass=RandomAI)
+checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
 checkers.start_game(verbose=True)
 print('\n\nX - RandomAI; O - StateLearnerAI')
 wins = 0
@@ -475,7 +477,7 @@ losses = 0
 draws = 0
 for i in range(100000):
     if i % 10 == 0:
-        print("XXX")
+        print("YYY")
         print(i)
         print(wins)
         print(draws)
