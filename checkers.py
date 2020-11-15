@@ -1,6 +1,7 @@
 import numpy as np
 from enum import Enum
 import random
+import math
 
 
 def colored(r, g, b, text):
@@ -222,7 +223,7 @@ class Checkers:
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_game_lost(self, colour: Colour):
-        if self._turn_count > 30:
+        if self._turn_count > 15:
             white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] > 0]
             black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] > 0]
             if len(white_pieces) > len(black_pieces):
@@ -416,7 +417,7 @@ class StateLearnerAI:
                 new_board_tuple = self.get_board_tuple(game_check.board)
                 pos_ranking = self.get_position_rating(new_board_tuple)
 
-                if best_ranking is None or pos_ranking > best_ranking:
+                if best_ranking is None or random.random() < math.exp(-pos_ranking / (2 * best_ranking)):
                     best_piece = piece
                     best_direction = direction
                     best_ranking = pos_ranking
