@@ -1,8 +1,7 @@
+import os, pickle, math, random
+
 import numpy as np
 from enum import Enum
-import random
-import math
-
 
 def colored(r, g, b, text):
     return "\033[38;2;{};{};{}m{} \033[38;2;255;255;255m".format(r, g, b, text)
@@ -111,6 +110,26 @@ class Checkers:
                 if self._board[i][j] != Colour.BLANK:
                     self._pieces[self._board[i][j]].append(Piece(self._board[i][j], [i, j]))
 
+        self.game_history = []
+        self.add_state_to_game_history()
+
+    def add_state_to_game_history(self):
+        board_list = []
+        for i in range(8):
+            for j in range(8):
+                position_char = ' '
+                if self._board[i][j] == Colour.BLACK:
+                    position_char = 'B'
+                elif self._board[i][j] == Colour.WHITE:
+                    position_char = 'W'
+                board_list.append(position_char)
+        board_string = ''.join(board_list)
+        if self.game_history and self.game_history[-1] == board_string:
+            # In the case of multiple jumps, we end up with multiple copies
+            # of the board. Prune these here.
+            return
+        self.game_history.append(board_string)
+
     @property
     def pieces(self):
         return self._pieces
@@ -160,6 +179,7 @@ class Checkers:
                 self._board[piece.position[0]][piece.position[1]] = piece.colour
                 if piece.position[0] in [0, 7]:
                     piece.king_piece()
+                self.add_state_to_game_history()
                 return True
             if m_type == MoveType.JUMP:
                 self.turns_since_last_piece_taken = 0
@@ -191,6 +211,7 @@ class Checkers:
 
                 if self.check_piece_can_take(piece):
                     pass
+                self.add_state_to_game_history()
                 return True
         return False
 
@@ -223,7 +244,7 @@ class Checkers:
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_game_lost(self, colour: Colour):
-        if self._turn_count > 15:
+        if self._turn_count > 100:
             white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] >= 0]
             black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] >= 0]
             if len(white_pieces) > len(black_pieces):
@@ -370,10 +391,12 @@ class StateLearnerAI:
         self._board = np.zeros((8, 8), dtype='int')
         self.this_game_states = []
 
+        #print(self.states_won)
+
     def move(self, must_jump=False, ind_piece=None):
         board_tuple = self.get_board_tuple(self._game.board)
         piece, direction, new_board = self.get_best_historical_move(board_tuple, ind_piece)
-        self.this_game_states.append(self.get_board_tuple(new_board))
+        self.this_game_states.append(self.get_board_state(new_board))
         return piece, direction
 
     def get_position_rating(self, board_tuple):
@@ -383,7 +406,7 @@ class StateLearnerAI:
         num_times_won = self.states_won[board_tuple]
         num_times_drawn = self.states_drawn[board_tuple]
         num_times_lost = self.states_lost[board_tuple]
-        return (num_times_won * 3. + num_times_drawn - 200 * num_times_lost) / num_times_seen
+        return (num_times_won * 3. + num_times_drawn - 1 * num_times_lost) / num_times_seen
 
     def get_best_historical_move(self, board_tuple, ind_piece=None):
         best_piece = None
@@ -414,7 +437,7 @@ class StateLearnerAI:
                 # TODO: Need to alter the new board state to suit the board
 
                 game_check.make_move(rel_piece, direction)
-                new_board_tuple = self.get_board_tuple(game_check.board)
+                new_board_tuple = self.get_board_state(game_check.board)
                 pos_ranking = self.get_position_rating(new_board_tuple)
                 # print(-pos_ranking / (2 * max(best_ranking, 0.01)))
                 ranked = best_ranking if best_ranking else 0.1
@@ -441,6 +464,9 @@ class StateLearnerAI:
                 board_list.append(square)
         return tuple(board_list)
 
+    def get_board_state(self, board):
+        return self.get_board_tuple(board)
+    
     def win(self):
         self.update_num_seen()
         self.total_wins += 1
@@ -469,24 +495,55 @@ class StateLearnerAI:
                 self.states_lost[state] = 0
 
 
-checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
-checkers.start_game(verbose=True)
-print('\n\nX - RandomAI; O - StateLearnerAI')
+class ProjectedStateLearnerAI(StateLearnerAI):
+    def get_board_state(self, board):
+        my_piece_count, their_piece_count = 0,0
+        for i in range(8):
+            for j in range(8):
+                if board[i][j] == self._side:
+                    my_piece_count += 1
+                elif board[i][j] != Colour.BLANK:
+                    their_piece_count += 1
+        return (my_piece_count - their_piece_count,)
+
+#checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
+#checkers.start_game(verbose=False)
+black_class = StateLearnerAI
+white_class = RandomAI
+print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
 wins = 0
 losses = 0
 draws = 0
+
+save_game_history = True
+
+game_record_output_dir = 'games_dump'
+if not os.path.exists(game_record_output_dir):
+    os.makedirs(game_record_output_dir)
+game_histories = []
+game_wins = []
+
 for i in range(100000):
-    if i % 10 == 0:
-        print("YYY")
-        print(i)
-        print(wins)
-        print(draws)
-        print(losses)
-    b = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
+    if i % 10 == 0 and i > 0:
+        print("Stats: {:5.4f}-{:5.4f}-{:5.4f} (wins-draws-losses) ... {}".format(wins / i, draws / i, losses / i, i))
+
+        if save_game_history:
+            dump_filename = os.path.join(game_record_output_dir, 'dump_{}.pkl'.format(i))
+            with open(dump_filename, 'wb') as f:
+                pickle.dump((game_wins, game_histories), f)
+                game_wins = []
+                game_histories = []
+        
+    b = Checkers(Black_AIClass=black_class, White_AIClass=white_class)
     win = b.start_game(verbose=False)
     if win == Result.BLACK:
         wins += 1
+        winner = 'BLACK'
     elif win == Result.WHITE:
         losses += 1
+        winner = 'WHITE'
     else:
         draws += 1
+        winner = 'DRAW'
+    game_wins.append(winner)
+    game_histories.append(b.game_history)
