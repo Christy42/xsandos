@@ -1,6 +1,7 @@
 import os, pickle, math, random
 
 import numpy as np
+from AIhub import RandomAI
 from enum import Enum
 
 
@@ -328,25 +329,6 @@ class Checkers:
                 self._black_ai.draw()
                 self._white_ai.draw()
                 return Result.DRAW
-
-
-class RandomAI:
-    def __init__(self, game: Checkers, colour: Colour):
-        self._game = game
-        self._colour = colour
-
-    def win(self):
-        pass
-
-    def loss(self):
-        pass
-
-    def draw(self):
-        pass
-
-    def move(self, must_jump=False, ind_piece=None):
-        possibilities = self._game.possible_moves(self._colour, ind_piece)
-        return random.choice(possibilities)
 
 
 class StateLearnerAI:

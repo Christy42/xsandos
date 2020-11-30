@@ -1,5 +1,5 @@
 import numpy as np
-import random
+from AIhub import RandomAI
 from enum import Enum
 
 
@@ -121,26 +121,6 @@ class BruteForceAI:
             for j in range(3):
                 if self._game.squares[i][j] == Square.BLANK:
                     return i, j
-
-    def win(self):
-        pass
-
-    def draw(self):
-        pass
-
-    def loss(self):
-        pass
-
-    
-class RandomAI:
-    def __init__(self, game: Game, side: Side):
-        self._game = game
-        self._side = side
-        self._my_square = (Square.Xs if self._side == Side.Xs else Square.Os)
-        self._board = np.zeros((3,3), dtype='int')
-
-    def move(self):
-        return random.choice(self._game.possible_moves(self._side))
 
     def win(self):
         pass
