@@ -1,8 +1,7 @@
-from colorama import Style
-from colorama import Fore
-from enum import Enum
-import random
+import os, pickle, math, random
 
+import numpy as np
+from enum import Enum
 
 def colored(r, g, b, text):
     return "\033[38;2;{};{};{}m{} \033[38;2;255;255;255m".format(r, g, b, text)
@@ -80,35 +79,68 @@ class Piece:
 
 
 class Checkers:
-    def __init__(self, Black_AIClass, White_AIClass):
-        self._board = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
-                       [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
-                       [Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
-                       [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
-                       [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
-                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
-                       [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
-                       [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
+    def __init__(self, Black_AIClass=None, White_AIClass=None, board=None):
+        if board:
+            self._board = [[board[i] for i in range(j, j+8)] for j in [8 * k for k in range(8)]]
+        else:
+            self._board = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
+                           [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
+                           [Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
+                           [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
+                           [Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK, Colour.BLANK],
+                           [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK],
+                           [Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK],
+                           [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
+        self._turn_count = 0
         self.turns_since_last_piece_taken = 0
-        self._black_ai = Black_AIClass(self, Colour.BLACK)
-        self._white_ai = White_AIClass(self, Colour.WHITE)
-        self._pieces = {Colour.WHITE:
-                            [Piece(Colour.WHITE, [0, 1]), Piece(Colour.WHITE, [0, 3]), Piece(Colour.WHITE, [0, 5]),
-                             Piece(Colour.WHITE, [0, 7]), Piece(Colour.WHITE, [1, 0]), Piece(Colour.WHITE, [1, 2]),
-                             Piece(Colour.WHITE, [1, 4]), Piece(Colour.WHITE, [1, 6]), Piece(Colour.WHITE, [2, 1]),
-                             Piece(Colour.WHITE, [2, 3]), Piece(Colour.WHITE, [2, 5]), Piece(Colour.WHITE, [2, 7])],
-                        Colour.BLACK:
-                            [Piece(Colour.BLACK, [7, 0]), Piece(Colour.BLACK, [7, 2]), Piece(Colour.BLACK, [7, 4]),
-                             Piece(Colour.BLACK, [7, 6]), Piece(Colour.BLACK, [6, 1]), Piece(Colour.BLACK, [6, 3]),
-                             Piece(Colour.BLACK, [6, 5]), Piece(Colour.BLACK, [6, 7]), Piece(Colour.BLACK, [5, 0]),
-                             Piece(Colour.BLACK, [5, 2]), Piece(Colour.BLACK, [5, 4]), Piece(Colour.BLACK, [5, 6])]
-                        }
+        if Black_AIClass:
+            self._black_ai = Black_AIClass(self, Colour.BLACK)
+        else:
+            self._black_ai = None
+        if White_AIClass:
+            self._white_ai = White_AIClass(self, Colour.WHITE)
+        else:
+            self._white_ai = None
+        self._turn = Colour.BLANK
+        # TODO: Can we relate this to the board up above
+        self._pieces = {Colour.WHITE: [], Colour.BLACK: []}
+        # print(self._board)
+        for i in range(8):
+            for j in range(8):
+                if self._board[i][j] != Colour.BLANK:
+                    self._pieces[self._board[i][j]].append(Piece(self._board[i][j], [i, j]))
+
+        self.game_history = []
+        self.add_state_to_game_history()
+
+    def add_state_to_game_history(self):
+        board_list = []
+        for i in range(8):
+            for j in range(8):
+                position_char = ' '
+                if self._board[i][j] == Colour.BLACK:
+                    position_char = 'B'
+                elif self._board[i][j] == Colour.WHITE:
+                    position_char = 'W'
+                board_list.append(position_char)
+        board_string = ''.join(board_list)
+        if self.game_history and self.game_history[-1] == board_string:
+            # In the case of multiple jumps, we end up with multiple copies
+            # of the board. Prune these here.
+            return
+        self.game_history.append(board_string)
 
     @property
     def pieces(self):
         return self._pieces
 
+    @property
+    def board(self):
+        return self._board
+
     def check_move(self, piece: Piece, direction: Direction):
+        # TODO: Include an input in case an individual piece is required to move
+        # TODO: Double check that the right colour is being picked
         # Piece already taken
         if piece.position == [-1, -1]:
             return False, None
@@ -147,6 +179,7 @@ class Checkers:
                 self._board[piece.position[0]][piece.position[1]] = piece.colour
                 if piece.position[0] in [0, 7]:
                     piece.king_piece()
+                self.add_state_to_game_history()
                 return True
             if m_type == MoveType.JUMP:
                 self.turns_since_last_piece_taken = 0
@@ -178,6 +211,7 @@ class Checkers:
 
                 if self.check_piece_can_take(piece):
                     pass
+                self.add_state_to_game_history()
                 return True
         return False
 
@@ -210,6 +244,16 @@ class Checkers:
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_game_lost(self, colour: Colour):
+        if self._turn_count > 100:
+            white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] >= 0]
+            black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] >= 0]
+            if len(white_pieces) > len(black_pieces):
+                return Result.WHITE
+            if len(black_pieces) > len(white_pieces):
+                return Result.BLACK
+            return Result.DRAW
+        if self.turns_since_last_piece_taken >= 100:
+            return Result.DRAW
         for piece in self._pieces[colour]:
             # The dead don't move
             if piece.position[0] < 0:
@@ -224,20 +268,17 @@ class Checkers:
                     continue
                 if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
                     return False
-        if self.turns_since_last_piece_taken >= 100:
-            return Result.DRAW
         return Result.WHITE if colour == Colour.BLACK else Result.BLACK
 
     def start_game(self, verbose=False):
-        blacks_turn = True
-        turn = 0
+        self._turn = Colour.BLACK
         while True:
-            turn += 1
+            self._turn_count += 1
             valid_move = False
             piece = self._pieces[Colour.WHITE][0]
             direction = Direction.DOWN_LEFT
             while not valid_move:
-                if blacks_turn:
+                if self._turn == Colour.BLACK:
                     piece, direction = self._black_ai.move(must_jump=self.check_jump_required(Colour.BLACK),
                                                            ind_piece=None)
                 else:
@@ -246,24 +287,34 @@ class Checkers:
 
                 valid_move, style = self.check_move(piece, direction)
             self.make_move(piece, direction)
-            if verbose:
+            if verbose or self._turn_count > 1000:
                 print("")
                 print("")
-                print(turn)
+                print("XXXXX")
+                print(self._turn_count)
+                print(self.turns_since_last_piece_taken)
                 for i in range(8):
-                    # print(self._board[i])
-                    new_row = [colored(255 if self._board[i][j]!=Colour.WHITE else 0, 255 if self._board[i][j]!=Colour.BLACK else 0, 255 if self._board[i][j]==Colour.BLANK else 0, str(self._board[i][j])) for j in range(8)]
+                    new_row = [colored(255 if self._board[i][j] != Colour.WHITE else 0, 255 if self._board[i][j] != Colour.BLACK else 0, 255 if self._board[i][j]==Colour.BLANK else 0, str(self._board[i][j])) for j in range(8)]
                     print(sum_l(new_row))
-            blacks_turn = not blacks_turn
-            game_over = self.check_game_lost(Colour.BLACK if blacks_turn else Colour.WHITE)
+            self._turn = Colour.WHITE if self._turn == Colour.BLACK else Colour.BLACK
+            game_over = self.check_game_lost(self._turn)
             if game_over == Result.WHITE:
-                print("White Win")
+                if verbose:
+                    print("White Win")
+                self._black_ai.loss()
+                self._white_ai.win()
                 return Result.WHITE
             if game_over == Result.BLACK:
-                print("Black Win")
+                if verbose:
+                    print("Black Win")
+                self._black_ai.win()
+                self._white_ai.loss()
                 return Result.BLACK
             if game_over == Result.DRAW:
-                print("Draw")
+                if verbose:
+                    print("Draw")
+                self._black_ai.draw()
+                self._white_ai.draw()
                 return Result.DRAW
 
 
@@ -271,6 +322,15 @@ class RandomAI:
     def __init__(self, game: Checkers, colour: Colour):
         self._game = game
         self._colour = colour
+
+    def win(self):
+        pass
+
+    def loss(self):
+        pass
+
+    def draw(self):
+        pass
 
     def move(self, must_jump=False, ind_piece=None):
         pot_pieces = {}
@@ -315,5 +375,175 @@ class RandomAI:
         return piece, direction
 
 
-checkers = Checkers(RandomAI, RandomAI)
-checkers.start_game(verbose=True)
+class StateLearnerAI:
+    states_seen = {}
+    states_won = {}
+    states_drawn = {}
+    states_lost = {}
+    total_wins = 0
+    total_draws = 0
+    total_losses = 0
+
+    def __init__(self, game: Checkers, side: Colour):
+        self._game = game
+        self._side = side
+        self._other_side = Colour.WHITE if side == Colour.BLACK else Colour.BLACK
+        self._board = np.zeros((8, 8), dtype='int')
+        self.this_game_states = []
+
+        #print(self.states_won)
+
+    def move(self, must_jump=False, ind_piece=None):
+        board_tuple = self.get_board_tuple(self._game.board)
+        piece, direction, new_board = self.get_best_historical_move(board_tuple, ind_piece)
+        self.this_game_states.append(self.get_board_state(new_board))
+        return piece, direction
+
+    def get_position_rating(self, board_tuple):
+        if board_tuple not in self.states_seen:
+            return 0
+        num_times_seen = self.states_seen[board_tuple]
+        num_times_won = self.states_won[board_tuple]
+        num_times_drawn = self.states_drawn[board_tuple]
+        num_times_lost = self.states_lost[board_tuple]
+        return (num_times_won * 3. + num_times_drawn - 1 * num_times_lost) / num_times_seen
+
+    def get_best_historical_move(self, board_tuple, ind_piece=None):
+        best_piece = None
+        best_direction = None
+        best_ranking = None
+        new_board = None
+        board_list = list(board_tuple)
+        # TODO: Get a list of all possible moves and try them on a separate board
+        for piece in self._game.pieces[self._side]:
+            if piece.position[0] < 0:
+                continue
+            if ind_piece:
+                if piece.position != ind_piece.position:
+                    continue
+            for direction in Direction:
+                if not self._game.check_move(piece, direction)[0]:
+                    continue
+                # print(self._game.check_move(piece, direction))
+                # TODO: Need to put colours back in board state
+                board_set = self.board_set(board_list)
+                # Note that the randomAI will only take effect if multiple jumps are made in a single turn
+                # This is not great but not terrible as the odds of this being have multiple choices are slim
+                game_check = Checkers(RandomAI, RandomAI, board=board_set)
+                rel_piece = None
+                for element in game_check.pieces[self._side]:
+                    if element.position == piece.position:
+                        rel_piece = element
+                # TODO: Need to alter the new board state to suit the board
+
+                game_check.make_move(rel_piece, direction)
+                new_board_tuple = self.get_board_state(game_check.board)
+                pos_ranking = self.get_position_rating(new_board_tuple)
+                # print(-pos_ranking / (2 * max(best_ranking, 0.01)))
+                ranked = best_ranking if best_ranking else 0.1
+                # print(min(max(-pos_ranking / (2 * ranked), -100), 100))
+                if best_ranking is None or random.random() < math.exp(min(max(-pos_ranking / (2 * ranked), -100), 100)):
+                    best_piece = piece
+                    best_direction = direction
+                    best_ranking = pos_ranking
+                    new_board = game_check.board
+        return best_piece, best_direction, new_board
+
+    def board_set(self, board):
+        return [Colour.BLANK if board[i] == ' ' else self._side if board[i] == 'M' else self._other_side for i in range(64)]
+
+    def get_board_tuple(self, board):
+        board_list = []
+        for i in range(8):
+            for j in range(8):
+                square = ' '
+                if board[i][j] == self._side:
+                    square = 'M'  # my square
+                elif board[i][j] != Colour.BLANK:
+                    square = 'E'  # enemy square
+                board_list.append(square)
+        return tuple(board_list)
+
+    def get_board_state(self, board):
+        return self.get_board_tuple(board)
+    
+    def win(self):
+        self.update_num_seen()
+        self.total_wins += 1
+        for state in self.this_game_states:
+            self.states_won[state] += 1
+
+    def draw(self):
+        self.total_draws += 1
+        self.update_num_seen()
+        for state in self.this_game_states:
+            self.states_drawn[state] += 1
+
+    def loss(self):
+        self.total_losses += 1
+        self.update_num_seen()
+        for state in self.this_game_states:
+            # print('Recording: {}'.format(state))
+            self.states_lost[state] += 1
+
+    def update_num_seen(self):
+        for state in self.this_game_states:
+            if state not in self.states_seen:
+                self.states_seen[state] = 1
+                self.states_won[state] = 0
+                self.states_drawn[state] = 0
+                self.states_lost[state] = 0
+
+
+class ProjectedStateLearnerAI(StateLearnerAI):
+    def get_board_state(self, board):
+        my_piece_count, their_piece_count = 0,0
+        for i in range(8):
+            for j in range(8):
+                if board[i][j] == self._side:
+                    my_piece_count += 1
+                elif board[i][j] != Colour.BLANK:
+                    their_piece_count += 1
+        return (my_piece_count - their_piece_count,)
+
+#checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
+#checkers.start_game(verbose=False)
+black_class = StateLearnerAI
+white_class = RandomAI
+print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
+wins = 0
+losses = 0
+draws = 0
+
+save_game_history = True
+
+game_record_output_dir = 'games_dump'
+if not os.path.exists(game_record_output_dir):
+    os.makedirs(game_record_output_dir)
+game_histories = []
+game_wins = []
+
+for i in range(100000):
+    if i % 10 == 0 and i > 0:
+        print("Stats: {:5.4f}-{:5.4f}-{:5.4f} (wins-draws-losses) ... {}".format(wins / i, draws / i, losses / i, i))
+
+        if save_game_history:
+            dump_filename = os.path.join(game_record_output_dir, 'dump_{}.pkl'.format(i))
+            with open(dump_filename, 'wb') as f:
+                pickle.dump((game_wins, game_histories), f)
+                game_wins = []
+                game_histories = []
+        
+    b = Checkers(Black_AIClass=black_class, White_AIClass=white_class)
+    win = b.start_game(verbose=False)
+    if win == Result.BLACK:
+        wins += 1
+        winner = 'BLACK'
+    elif win == Result.WHITE:
+        losses += 1
+        winner = 'WHITE'
+    else:
+        draws += 1
+        winner = 'DRAW'
+    game_wins.append(winner)
+    game_histories.append(b.game_history)
