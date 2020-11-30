@@ -1,4 +1,5 @@
 import numpy as np
+import random
 from enum import Enum
 
 
@@ -87,6 +88,14 @@ class Game:
             self.print_board()
         return Result.DRAW
 
+    def possible_moves(self, side: Side, ind_piece=None):
+        possible_moves = []
+        for i in range(len(self._squares)):
+            for j in range(len(self._squares)):
+                if self._squares[i][j] == Square.BLANK:
+                    possible_moves.append([i, j])
+        return possible_moves
+
     def print_board(self):
         print('-'*12)
         for i in range(3):
@@ -131,16 +140,7 @@ class RandomAI:
         self._board = np.zeros((3,3), dtype='int')
 
     def move(self):
-        for i in range(3):
-            for j in range(3):
-                if self._game.squares[i][j] == self._my_square:
-                    self._board[i][j] = 1
-                elif self._game.squares[i][j] != Square.BLANK:
-                    self._board[i][j] = -1
-        rows,cols = np.where(self._board == 0)
-        assert len(rows) > 0, "Board is full."
-        random_index = np.random.choice(len(rows))
-        return rows[random_index], cols[random_index]
+        return random.choice(self._game.possible_moves(self._side))
 
     def win(self):
         pass
@@ -370,7 +370,7 @@ class StateLearnerAI:
                 self.states_seen[state]  = 1
                 self.states_won[state]   = 0
                 self.states_drawn[state] = 0
-                self.states_lost[state]  = 0
+                self.states_lost[state] = 0
         
 
 print('X - NewellSimonAI; O - StateLearnerAI')
@@ -389,6 +389,6 @@ for i in range(30):
     b.start_game(verbose=False)
 
 print('\n\nX - RandomAI; O - StateLearnerAI')
-for i in range(100000):
-    b = Game(RandomAI, StateLearnerAI)
-    b.start_game(verbose=False)
+for i in range(1):
+    b = Game(RandomAI, RandomAI)
+    b.start_game(verbose=True)
