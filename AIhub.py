@@ -1,6 +1,7 @@
 import random
 from copy import deepcopy
 from xsandos import MoveXs
+from checkers import Colour
 
 
 class RandomAI:
@@ -99,3 +100,15 @@ class StateLearnerAI:
                 self.states_won[state] = 0
                 self.states_drawn[state] = 0
                 self.states_lost[state] = 0
+
+
+class ProjectedStateLearnerAI(StateLearnerAI):
+    def get_board_state(self, board):
+        my_piece_count, their_piece_count = 0,0
+        for i in range(8):
+            for j in range(8):
+                if board[i][j] == self._side:
+                    my_piece_count += 1
+                elif board[i][j] != Colour.BLANK:
+                    their_piece_count += 1
+        return (my_piece_count - their_piece_count,)

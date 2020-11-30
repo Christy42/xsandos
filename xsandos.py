@@ -1,6 +1,8 @@
 import numpy as np
 from enum import Enum
 
+from game import Game
+
 
 class Result(Enum):
     Xs = 1
@@ -26,8 +28,9 @@ class Side(Enum):
     Os = 2
 
 
-class XsAndOs:
+class XsAndOs(Game):
     def __init__(self, X_AIClass, O_AIClass):
+        super().__init__()
         self._x_ai = X_AIClass(self, Side.Xs, Side.Os)
         self._o_ai = O_AIClass(self, Side.Os, Side.Xs)
         self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
@@ -35,11 +38,7 @@ class XsAndOs:
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
         self._xs_turn = None
 
-    @property
-    def board(self):
-        return self._board
-
-    def check_win(self):
+    def check_end_game(self):
         for i in range(3):
             if self._board[i][0] == self._board[i][1] == self._board[i][2]:
                 return self._board[i][0]
@@ -56,6 +55,9 @@ class XsAndOs:
         # TODO: Slightly clunky, might be better with dicts
         self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] = move[MoveXs.SIDE]
 
+    def check_move(self, move):
+        return self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] == Square.BLANK
+
     def start_game(self, verbose=False):
         if verbose:
             print('New game')
@@ -70,14 +72,14 @@ class XsAndOs:
                     move = self._x_ai.move()
                 else:
                     move = self._o_ai.move()
-                valid_move = True if self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] == Square.BLANK else False
+                valid_move = True if self.check_move(move) else False
                 if not valid_move:
                     self.print_board()
                     assert 0
 
             self.make_move(move)
             self._xs_turn = not self._xs_turn
-            game_over = self.check_win()
+            game_over = self.check_end_game()
             if game_over == Square.Xs:
                 print("X Win")
                 self._x_ai.win()

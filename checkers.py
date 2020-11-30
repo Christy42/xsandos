@@ -1,7 +1,5 @@
-import os, pickle, math, random
 
-import numpy as np
-from AIhub import RandomAI, StateLearnerAI
+from game import Game
 from enum import Enum
 
 
@@ -85,8 +83,9 @@ class Piece:
         self._position = [-1, -1]
 
 
-class Checkers:
+class Checkers(Game):
     def __init__(self, Black_AIClass=None, White_AIClass=None, board=None):
+        super().__init__()
         if board:
             self._board = [[board[i] for i in range(j, j+8)] for j in [8 * k for k in range(8)]]
         else:
@@ -151,10 +150,6 @@ class Checkers:
     @property
     def pieces(self):
         return self._pieces
-
-    @property
-    def board(self):
-        return self._board
 
     def check_move(self, move):
         # TODO: Include an input in case an individual piece is required to move
@@ -267,7 +262,7 @@ class Checkers:
                 [-1, -1] if direc == Direction.UP_LEFT else
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
-    def check_game_lost(self, colour: Colour):
+    def check_end_game(self, colour: Colour):
         if self._turn_count > 100:
             white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] >= 0]
             black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] >= 0]
@@ -337,59 +332,3 @@ class Checkers:
                 self._black_ai.draw()
                 self._white_ai.draw()
                 return Result.DRAW
-
-
-class ProjectedStateLearnerAI(StateLearnerAI):
-    def get_board_state(self, board):
-        my_piece_count, their_piece_count = 0,0
-        for i in range(8):
-            for j in range(8):
-                if board[i][j] == self._side:
-                    my_piece_count += 1
-                elif board[i][j] != Colour.BLANK:
-                    their_piece_count += 1
-        return (my_piece_count - their_piece_count,)
-
-"""
-#checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
-#checkers.start_game(verbose=False)
-black_class = RandomAI
-white_class = RandomAI
-print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
-wins = 0
-losses = 0
-draws = 0
-
-save_game_history = False
-
-game_record_output_dir = 'games_dump'
-if not os.path.exists(game_record_output_dir):
-    os.makedirs(game_record_output_dir)
-game_histories = []
-game_wins = []
-
-for i in range(1):
-    if i % 10 == 0 and i > 0:
-        print("Stats: {:5.4f}-{:5.4f}-{:5.4f} (wins-draws-losses) ... {}".format(wins / i, draws / i, losses / i, i))
-
-        if save_game_history:
-            dump_filename = os.path.join(game_record_output_dir, 'dump_{}.pkl'.format(i))
-            with open(dump_filename, 'wb') as f:
-                pickle.dump((game_wins, game_histories), f)
-                game_wins = []
-                game_histories = []
-        
-    b = Checkers(Black_AIClass=black_class, White_AIClass=white_class)
-    win = b.start_game(verbose=True)
-    if win == Result.BLACK:
-        wins += 1
-        winner = 'BLACK'
-    elif win == Result.WHITE:
-        losses += 1
-        winner = 'WHITE'
-    else:
-        draws += 1
-        winner = 'DRAW'
-    game_wins.append(winner)
-    game_histories.append(b.game_history)
-"""
