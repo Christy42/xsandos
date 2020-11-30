@@ -8,7 +8,8 @@ class Result(Enum):
     Os = 2
     DRAW = 3
 
-    
+
+# TODO: Square and Side should be brought to one of them
 class Square(Enum):
     BLANK = 1
     Xs = 2
@@ -24,48 +25,53 @@ class Game:
     def __init__(self, X_AIClass, O_AIClass):
         self._x_ai = X_AIClass(self, Side.Xs, Side.Os)
         self._o_ai = O_AIClass(self, Side.Os, Side.Xs)
-        self._squares = [[Square.BLANK, Square.BLANK, Square.BLANK],
-                         [Square.BLANK, Square.BLANK, Square.BLANK],
-                         [Square.BLANK, Square.BLANK, Square.BLANK]]
+        self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
+                       [Square.BLANK, Square.BLANK, Square.BLANK],
+                       [Square.BLANK, Square.BLANK, Square.BLANK]]
+        self._xs_turn = None
 
     @property
-    def squares(self):
-        return self._squares
+    def board(self):
+        return self._board
 
     def check_win(self):
         for i in range(3):
-            if self._squares[i][0] == self._squares[i][1] == self._squares[i][2]:
-                return self._squares[i][0]
+            if self._board[i][0] == self._board[i][1] == self._board[i][2]:
+                return self._board[i][0]
         for i in range(3):
-            if self._squares[0][i] == self._squares[1][i] == self._squares[2][i]:
-                return self._squares[0][i]
-        if self._squares[0][0] == self._squares[1][1] == self._squares[2][2]:
-            return self._squares[1][1]
-        if self._squares[0][2] == self._squares[1][1] == self._squares[2][0]:
-            return self._squares[1][1]
+            if self._board[0][i] == self._board[1][i] == self._board[2][i]:
+                return self._board[0][i]
+        if self._board[0][0] == self._board[1][1] == self._board[2][2]:
+            return self._board[1][1]
+        if self._board[0][2] == self._board[1][1] == self._board[2][0]:
+            return self._board[1][1]
         return False
+
+    def make_move(self, move):
+        # TODO: Slightly clunky, might be better with dicts
+        self._board[move[1]][move[2]] = move[0]
 
     def start_game(self, verbose=False):
         if verbose:
             print('New game')
-        xs_turn = True
+        self._xs_turn = True
         for i in range(9):
             if verbose:
                 self.print_board()
             valid_move = False
             row, col = 0, 0
             while not valid_move:
-                if xs_turn:
+                if self._xs_turn:
                     row, col = self._x_ai.move()
                 else:
                     row, col = self._o_ai.move()
-                valid_move = True if self._squares[row][col] == Square.BLANK else False
+                valid_move = True if self._board[row][col] == Square.BLANK else False
                 if not valid_move:
                     self.print_board()
-                    print((row,col))
+                    print((row, col))
                     assert 0
-            self._squares[row][col] = Square.Xs if xs_turn else Square.Os
-            xs_turn = not xs_turn
+            self.make_move([Square.Xs if self._xs_turn else Square.Os, row, col])
+            self._xs_turn = not self._xs_turn
             game_over = self.check_win()
             if game_over == Square.Xs:
                 print("X Win")
@@ -90,10 +96,11 @@ class Game:
 
     def possible_moves(self, side: Side, ind_piece=None):
         possible_moves = []
-        for i in range(len(self._squares)):
-            for j in range(len(self._squares)):
-                if self._squares[i][j] == Square.BLANK:
-                    possible_moves.append([i, j])
+        side = Square.Xs if self._xs_turn else Square.Os
+        for i in range(len(self._board)):
+            for j in range(len(self._board)):
+                if self._board[i][j] == Square.BLANK:
+                    possible_moves.append([side, i, j])
         return possible_moves
 
     def print_board(self):
@@ -102,9 +109,9 @@ class Game:
             line = ""
             for j in range(3):
                 square = ' '
-                if self._squares[i][j] == Square.Xs:
+                if self._board[i][j] == Square.Xs:
                     square = 'X'
-                elif self._squares[i][j] == Square.Os:
+                elif self._board[i][j] == Square.Os:
                     square = 'O'
                 line += square
             print(line)
@@ -247,17 +254,17 @@ class NewellSimonAI:
         target = (-2 if block else 2)
         count = int(np.diag(board).sum() == target) + int(np.diag(np.fliplr(board)).sum() == target)
         for i in range(3):
-            count += int(board[i,:].sum() == target) + int(board[:,i].sum() == target)
+            count += int(board[i, :].sum() == target) + int(board[:, i].sum() == target)
         return (count >= 2)
 
     def _board_as_array(self):
         '''Store game board as np array for easier slicing.'''
         for i in range(3):
             for j in range(3):
-                if self._game.squares[i][j] == self._my_square:
-                    self._board[i,j] = 1
-                elif self._game.squares[i][j] != Square.BLANK:
-                    self._board[i,j] = -1
+                if self._game.board[i][j] == self._my_square:
+                    self._board[i, j] = 1
+                elif self._game.board[i][j] != Square.BLANK:
+                    self._board[i, j] = -1
 
     def win(self):
         pass

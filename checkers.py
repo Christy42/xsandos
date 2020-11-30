@@ -115,7 +115,7 @@ class Checkers:
         self.game_history = []
         self.add_state_to_game_history()
 
-    def possible_moves(self, side: Colour, ind_piece=None):
+    def possible_moves(self, side: Colour, must_jump=False, ind_piece=None):
         possible_moves = []
         for piece in self._pieces[side]:
             if ind_piece:
