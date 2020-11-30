@@ -1,2 +1,5 @@
 .idea*
 venv*
+games_dump/*
+*_pycache__/*
+.ipynb_checkpoints*
