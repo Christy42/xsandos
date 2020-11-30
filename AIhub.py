@@ -1,8 +1,9 @@
 import random
 from copy import deepcopy
 
+
 class RandomAI:
-    def __init__(self, game, side):
+    def __init__(self, game, side, other_side):
         self._game = game
         self._side = side
 
@@ -35,7 +36,7 @@ class StateLearnerAI:
         board_tuple = self.get_board_tuple(self._game)
         move = self.get_best_historical_move(**kwargs)
         board_list = list(board_tuple)
-        board_list[move[0] * len(self._game.board) + move[1]] = 'M'
+        board_list[move[1] * len(self._game.board) + move[2]] = 'M'
         self.this_game_states.append(tuple(board_list))
         return move
 

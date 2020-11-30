@@ -59,18 +59,18 @@ class Game:
             if verbose:
                 self.print_board()
             valid_move = False
-            row, col = 0, 0
+            move = None
             while not valid_move:
                 if self._xs_turn:
-                    row, col = self._x_ai.move()
+                    move = self._x_ai.move()
                 else:
-                    row, col = self._o_ai.move()
-                valid_move = True if self._board[row][col] == Square.BLANK else False
+                    move = self._o_ai.move()
+                valid_move = True if self._board[move[1]][move[2]] == Square.BLANK else False
                 if not valid_move:
                     self.print_board()
-                    print((row, col))
                     assert 0
-            self.make_move([Square.Xs if self._xs_turn else Square.Os, row, col])
+
+            self.make_move(move)
             self._xs_turn = not self._xs_turn
             game_over = self.check_win()
             if game_over == Square.Xs:
@@ -127,7 +127,7 @@ class BruteForceAI:
         for i in range(3):
             for j in range(3):
                 if self._game.squares[i][j] == Square.BLANK:
-                    return i, j
+                    return [self._side, i, j]
 
     def win(self):
         pass
@@ -153,19 +153,19 @@ class NewellSimonAI:
         for block in [False, True]:
             position = self.win_or_block(block=block)
             if position:
-                return position
+                return [self._side, position[0], position[1]]
 
         position = self.fork()
         if position:
-            return position
+            return [self._side, position[0], position[1]]
 
         position = self.block_fork()
         if position:
-            return position
+            return [self._side, position[0], position[1]]
 
         position = self.empty_square()
         if position:
-            return position
+            return [self._side, position[0], position[1]]
 
         self._game.print_board()
         raise RuntimeError("No valid moves. Is the board full?")
@@ -183,7 +183,7 @@ class NewellSimonAI:
             return i,i
         if np.diag(np.fliplr(self._board)).sum() == target:
             i = np.where(np.diag(np.fliplr(self._board))==0)[0][0]
-            return i,2-i
+            return i, 2-i
 
     def fork(self):
         '''Find and play any available 2-way forks.'''
@@ -293,5 +293,5 @@ for i in range(30):
 
 print('\n\nX - RandomAI; O - StateLearnerAI')
 for i in range(1):
-    b = Game(RandomAI, RandomAI)
+    b = Game(RandomAI, StateLearnerAI)
     b.start_game(verbose=True)
