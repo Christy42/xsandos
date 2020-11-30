@@ -114,7 +114,7 @@ class Checkers:
         self.game_history = []
         self.add_state_to_game_history()
 
-    def possible_moves(self, side: Colour, ind_piece=False):
+    def possible_moves(self, side: Colour, ind_piece=None):
         possible_moves = []
         for piece in self._pieces[side]:
             if ind_piece:
@@ -345,46 +345,8 @@ class RandomAI:
         pass
 
     def move(self, must_jump=False, ind_piece=None):
-        pot_pieces = {}
-        if ind_piece:
-            pot_pieces = {ind_piece: []}
-            for direction in Direction:
-                value, style = self._game.check_move(ind_piece, direction)
-                # should always be a jump required if a piece is mandated to be used but for completeness
-                if not must_jump and value:
-                    pot_pieces[ind_piece].append(direction)
-                elif must_jump and style == MoveType.JUMP:
-                    pot_pieces[ind_piece].append(direction)
-        elif must_jump:
-            for piece in self._game.pieces[self._colour]:
-                if piece.position == [-1, -1]:
-                    continue
-                if self._game.check_piece_can_take(piece):
-                    pot_pieces.update({piece: []})
-
-                for poss in pot_pieces:
-                    for direction in Direction:
-                        value, style = self._game.check_move(poss, direction)
-                        if style == MoveType.JUMP:
-                            pot_pieces[poss].append(direction)
-        else:
-            for piece in self._game.pieces[self._colour]:
-                if piece.position == [-1, -1]:
-                    continue
-                for direction in Direction:
-                    value, style = self._game.check_move(piece, direction)
-                    if value:
-                        if piece not in pot_pieces:
-                            pot_pieces[piece] = [direction]
-                        else:
-                            pot_pieces[piece].append([direction])
-        if len(pot_pieces) == 0:
-            raise Exception("No valid move found")
-        piece = random.choice(list(pot_pieces.keys()))
-        direction = random.choice(pot_pieces[piece])
-        # input("Press Enter to continue...")
-
-        return piece, direction
+        possibilities = self._game.possible_moves(self._colour, ind_piece)
+        return random.choice(possibilities)
 
 
 class StateLearnerAI:
@@ -520,14 +482,14 @@ class ProjectedStateLearnerAI(StateLearnerAI):
 
 #checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
 #checkers.start_game(verbose=False)
-black_class = StateLearnerAI
+black_class = RandomAI
 white_class = RandomAI
 print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
 wins = 0
 losses = 0
 draws = 0
 
-save_game_history = True
+save_game_history = False
 
 game_record_output_dir = 'games_dump'
 if not os.path.exists(game_record_output_dir):
@@ -535,7 +497,7 @@ if not os.path.exists(game_record_output_dir):
 game_histories = []
 game_wins = []
 
-for i in range(100000):
+for i in range(1):
     if i % 10 == 0 and i > 0:
         print("Stats: {:5.4f}-{:5.4f}-{:5.4f} (wins-draws-losses) ... {}".format(wins / i, draws / i, losses / i, i))
 
@@ -547,7 +509,7 @@ for i in range(100000):
                 game_histories = []
         
     b = Checkers(Black_AIClass=black_class, White_AIClass=white_class)
-    win = b.start_game(verbose=False)
+    win = b.start_game(verbose=True)
     if win == Result.BLACK:
         wins += 1
         winner = 'BLACK'
