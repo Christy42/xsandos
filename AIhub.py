@@ -1,7 +1,7 @@
 import random
 from copy import deepcopy
 from xsandos import MoveXs
-from checkers import Colour
+from checkers import Colour, MoveCheckers
 
 
 class RandomAI:
@@ -35,11 +35,10 @@ class StateLearnerAI:
         self.this_game_states = []
 
     def move(self, **kwargs):
-        board_tuple = self.get_board_tuple(self._game)
         move = self.get_best_historical_move(**kwargs)
-        board_list = list(board_tuple)
-        board_list[move[MoveXs.ROW] * len(self._game.board) + move[MoveXs.COLUMN]] = 'M'
-        self.this_game_states.append(tuple(board_list))
+        temp_game = deepcopy(self._game)
+        temp_game.make_move(deepcopy(move))
+        self.this_game_states.append(self.get_board_tuple(temp_game))
         return move
 
     def get_position_rating(self, board_tuple):
@@ -56,9 +55,11 @@ class StateLearnerAI:
         best_move = None
         best_ranking = None
         pos_moves = self._game.possible_moves(self._side, **kwargs)
+        print("X")
+        print(len(pos_moves))
         for move in pos_moves:
             temp_game = deepcopy(self._game)
-            temp_game.make_move(move)
+            temp_game.make_move(deepcopy(move))
             pos_ranking = self.get_position_rating(self.get_board_tuple(temp_game))
             if best_ranking is None or pos_ranking > best_ranking:
                 best_move = move

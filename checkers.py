@@ -1,4 +1,4 @@
-
+from copy import deepcopy
 from game import Game
 from enum import Enum
 
@@ -122,11 +122,18 @@ class Checkers(Game):
     def possible_moves(self, side: Colour, must_jump=False, ind_piece=None):
         possible_moves = []
         for piece in self._pieces[side]:
+            print("Breaker")
+            print(piece.position)
             if ind_piece:
-                if ind_piece != piece:
+                print(ind_piece.position)
+                if ind_piece.position != piece.position:
                     continue
             for direction in Direction:
-                if self.check_move({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction}):
+                print("Breaker")
+                print(piece.position)
+                print(direction)
+                print(self.check_move({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})[0])
+                if self.check_move({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})[0]:
                     possible_moves.append({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})
         return possible_moves
 
@@ -147,12 +154,19 @@ class Checkers(Game):
             return
         self.game_history.append(board_string)
 
+    def print_board(self):
+        for i in range(8):
+            new_row = [colored(255 if self._board[i][j] != Colour.WHITE else 0,
+                               255 if self._board[i][j] != Colour.BLACK else 0,
+                               255 if self._board[i][j] == Colour.BLANK else 0, str(self._board[i][j])) for j in
+                       range(8)]
+            print(sum_l(new_row))
+
     @property
     def pieces(self):
         return self._pieces
 
     def check_move(self, move):
-        # TODO: Include an input in case an individual piece is required to move
         # TODO: Double check that the right colour is being picked
         piece = move[MoveCheckers.PIECE]
         direction = move[MoveCheckers.DIRECTION]
@@ -218,8 +232,6 @@ class Checkers(Game):
                 # TODO: Can a piece jump to the last line and immediately jump backwards???
                 if self.check_piece_can_take(piece):
                     valid_move = False
-                    new_piece = None
-                    new_direction = None
                     while not valid_move:
                         if piece.colour == Colour.BLACK:
                             move = self._black_ai.move(must_jump=True, ind_piece=piece)
@@ -227,7 +239,6 @@ class Checkers(Game):
                             move = self._white_ai.move(must_jump=True, ind_piece=piece)
                         valid_move = self.check_move(move)
                     self.make_move(move)
-
                 if self.check_piece_can_take(piece):
                     pass
                 self.add_state_to_game_history()
@@ -300,7 +311,6 @@ class Checkers(Game):
                     move = self._black_ai.move(must_jump=self.check_jump_required(Colour.BLACK), ind_piece=None)
                 else:
                     move = self._white_ai.move(must_jump=self.check_jump_required(Colour.WHITE), ind_piece=None)
-
                 valid_move, style = self.check_move(move)
             self.make_move(move)
             if verbose or self._turn_count > 1000:
@@ -309,11 +319,9 @@ class Checkers(Game):
                 print("XXXXX")
                 print(self._turn_count)
                 print(self.turns_since_last_piece_taken)
-                for i in range(8):
-                    new_row = [colored(255 if self._board[i][j] != Colour.WHITE else 0, 255 if self._board[i][j] != Colour.BLACK else 0, 255 if self._board[i][j]==Colour.BLANK else 0, str(self._board[i][j])) for j in range(8)]
-                    print(sum_l(new_row))
+                self.print_board()
             self._turn = Colour.WHITE if self._turn == Colour.BLACK else Colour.BLACK
-            game_over = self.check_game_lost(self._turn)
+            game_over = self.check_end_game(self._turn)
             if game_over == Result.WHITE:
                 if verbose:
                     print("White Win")
