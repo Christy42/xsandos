@@ -3,6 +3,7 @@ import os, pickle, math, random
 import numpy as np
 from enum import Enum
 
+
 def colored(r, g, b, text):
     return "\033[38;2;{};{};{}m{} \033[38;2;255;255;255m".format(r, g, b, text)
 
@@ -112,6 +113,17 @@ class Checkers:
 
         self.game_history = []
         self.add_state_to_game_history()
+
+    def possible_moves(self, side: Colour, ind_piece=False):
+        possible_moves = []
+        for piece in self._pieces[side]:
+            if ind_piece:
+                if ind_piece != piece:
+                    continue
+            for direction in Direction:
+                if self.check_move(piece, direction):
+                    possible_moves.append([piece, direction])
+        return possible_moves
 
     def add_state_to_game_history(self):
         board_list = []
