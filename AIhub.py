@@ -1,5 +1,6 @@
 import random
 from copy import deepcopy
+from xsandos import MoveXs
 
 
 class RandomAI:
@@ -36,7 +37,7 @@ class StateLearnerAI:
         board_tuple = self.get_board_tuple(self._game)
         move = self.get_best_historical_move(**kwargs)
         board_list = list(board_tuple)
-        board_list[move[1] * len(self._game.board) + move[2]] = 'M'
+        board_list[move[MoveXs.ROW] * len(self._game.board) + move[MoveXs.COLUMN]] = 'M'
         self.this_game_states.append(tuple(board_list))
         return move
 

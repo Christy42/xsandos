@@ -1,5 +1,4 @@
 import numpy as np
-from AIhub import RandomAI, StateLearnerAI
 from enum import Enum
 
 
@@ -7,6 +6,12 @@ class Result(Enum):
     Xs = 1
     Os = 2
     DRAW = 3
+
+
+class MoveXs(Enum):
+    SIDE = 1
+    ROW = 2
+    COLUMN = 3
 
 
 # TODO: Square and Side should be brought to one of them
@@ -21,7 +26,7 @@ class Side(Enum):
     Os = 2
 
 
-class Game:
+class XsAndOs:
     def __init__(self, X_AIClass, O_AIClass):
         self._x_ai = X_AIClass(self, Side.Xs, Side.Os)
         self._o_ai = O_AIClass(self, Side.Os, Side.Xs)
@@ -49,7 +54,7 @@ class Game:
 
     def make_move(self, move):
         # TODO: Slightly clunky, might be better with dicts
-        self._board[move[1]][move[2]] = move[0]
+        self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] = move[MoveXs.SIDE]
 
     def start_game(self, verbose=False):
         if verbose:
@@ -65,7 +70,7 @@ class Game:
                     move = self._x_ai.move()
                 else:
                     move = self._o_ai.move()
-                valid_move = True if self._board[move[1]][move[2]] == Square.BLANK else False
+                valid_move = True if self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] == Square.BLANK else False
                 if not valid_move:
                     self.print_board()
                     assert 0
@@ -100,7 +105,7 @@ class Game:
         for i in range(len(self._board)):
             for j in range(len(self._board)):
                 if self._board[i][j] == Square.BLANK:
-                    possible_moves.append([side, i, j])
+                    possible_moves.append({MoveXs.SIDE: side, MoveXs.ROW: i, MoveXs.COLUMN: j})
         return possible_moves
 
     def print_board(self):
@@ -119,14 +124,14 @@ class Game:
 
 
 class BruteForceAI:
-    def __init__(self, game: Game, side: Side):
+    def __init__(self, game: XsAndOs, side: Side):
         self._game = game
         self._side = side
         
     def move(self):
         for i in range(3):
             for j in range(3):
-                if self._game.squares[i][j] == Square.BLANK:
+                if self._game.board[i][j] == Square.BLANK:
                     return [self._side, i, j]
 
     def win(self):
@@ -140,11 +145,11 @@ class BruteForceAI:
     
                 
 class NewellSimonAI:
-    def __init__(self, game: Game, side: Side, other_side: Side):
+    def __init__(self, game: XsAndOs, side: Side, other_side: Side):
         self._game = game
         self._side = side
         self._my_square = (Square.Xs if self._side == Side.Xs else Square.Os)
-        self._board = np.zeros((3,3))
+        self._board = np.zeros((3, 3))
 
     def move(self):
         '''Make a move according to the Newell-Simon programme'''
@@ -153,19 +158,19 @@ class NewellSimonAI:
         for block in [False, True]:
             position = self.win_or_block(block=block)
             if position:
-                return [self._side, position[0], position[1]]
+                return {MoveXs.SIDE: self._side, MoveXs.ROW: position[0], MoveXs.COLUMN: position[1]}
 
         position = self.fork()
         if position:
-            return [self._side, position[0], position[1]]
+            return {MoveXs.SIDE: self._side, MoveXs.ROW: position[0], MoveXs.COLUMN: position[1]}
 
         position = self.block_fork()
         if position:
-            return [self._side, position[0], position[1]]
+            return {MoveXs.SIDE: self._side, MoveXs.ROW: position[0], MoveXs.COLUMN: position[1]}
 
         position = self.empty_square()
         if position:
-            return [self._side, position[0], position[1]]
+            return {MoveXs.SIDE: self._side, MoveXs.ROW: position[0], MoveXs.COLUMN: position[1]}
 
         self._game.print_board()
         raise RuntimeError("No valid moves. Is the board full?")
@@ -274,24 +279,3 @@ class NewellSimonAI:
 
     def loss(self):
         pass
-
-
-print('X - NewellSimonAI; O - StateLearnerAI')
-for i in range(50):
-    b = Game(NewellSimonAI, StateLearnerAI)
-    b.start_game(verbose=False)
-
-print('\n\nX - StateLearnerAI; O - NewellSimonAI')
-for i in range(30):
-    b = Game(StateLearnerAI, NewellSimonAI)
-    b.start_game(verbose=False)
-
-print('\n\nX - StateLearnerAI; O - StateLearnerAI')
-for i in range(30):
-    b = Game(StateLearnerAI, StateLearnerAI)
-    b.start_game(verbose=False)
-
-print('\n\nX - RandomAI; O - StateLearnerAI')
-for i in range(1):
-    b = Game(RandomAI, StateLearnerAI)
-    b.start_game(verbose=True)
