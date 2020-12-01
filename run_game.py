@@ -6,7 +6,7 @@ from xsandos import MoveXs, XsAndOs, NewellSimonAI
 from AIhub import *
 
 
-game = "checkers"
+game = "xsandos"
 
 if game == "xsandos":
     print('X - NewellSimonAI; O - StateLearnerAI')
@@ -20,9 +20,9 @@ if game == "xsandos":
         b.start_game(verbose=False)
 
     print('\n\nX - StateLearnerAI; O - StateLearnerAI')
-    for i in range(30):
+    for i in range(1):
         b = XsAndOs(StateLearnerAI, StateLearnerAI)
-        b.start_game(verbose=False)
+        b.start_game(verbose=True)
 
     print('\n\nX - RandomAI; O - StateLearnerAI')
     for i in range(1):
@@ -32,7 +32,7 @@ if game == "xsandos":
 if game == "checkers":
     # checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
     # checkers.start_game(verbose=False)
-    black_class = RandomAI
+    black_class = StateLearnerAI
     white_class = StateLearnerAI
     print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
     wins = 0

@@ -86,6 +86,7 @@ class Piece:
 class Checkers(Game):
     def __init__(self, Black_AIClass=None, White_AIClass=None, board=None):
         super().__init__()
+        self.game_id = 1
         if board:
             self._board = [[board[i] for i in range(j, j+8)] for j in [8 * k for k in range(8)]]
         else:
@@ -100,13 +101,13 @@ class Checkers(Game):
         self._turn_count = 0
         self.turns_since_last_piece_taken = 0
         if Black_AIClass:
-            self._black_ai = Black_AIClass(self, Colour.BLACK, Colour.WHITE)
+            self._player_1_ai = Black_AIClass(self, Colour.BLACK, Colour.WHITE)
         else:
-            self._black_ai = None
+            self._player_1_ai = None
         if White_AIClass:
-            self._white_ai = White_AIClass(self, Colour.WHITE, Colour.BLACK)
+            self._player_2_ai = White_AIClass(self, Colour.WHITE, Colour.BLACK)
         else:
-            self._white_ai = None
+            self._player_2_ai = None
         self._turn = Colour.BLANK
         # TODO: Can we relate this to the board up above
         self._pieces = {Colour.WHITE: [], Colour.BLACK: []}
@@ -122,17 +123,11 @@ class Checkers(Game):
     def possible_moves(self, side: Colour, must_jump=False, ind_piece=None):
         possible_moves = []
         for piece in self._pieces[side]:
-            print("Breaker")
-            print(piece.position)
             if ind_piece:
-                print(ind_piece.position)
+                print(piece.position, ind_piece.position)
                 if ind_piece.position != piece.position:
                     continue
             for direction in Direction:
-                print("Breaker")
-                print(piece.position)
-                print(direction)
-                print(self.check_move({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})[0])
                 if self.check_move({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})[0]:
                     possible_moves.append({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})
         return possible_moves
@@ -199,7 +194,12 @@ class Checkers(Game):
         return True, MoveType.MOVE
 
     def make_move(self, move):
+        # TODO: My god this hack is something horrific
+        print(move)
         piece = move[MoveCheckers.PIECE]
+        for meeple in self.pieces[move[MoveCheckers.PIECE].colour]:
+            if meeple.position == move[MoveCheckers.PIECE].position:
+                piece = meeple
         direction = move[MoveCheckers.DIRECTION]
         allowed, m_type = self.check_move(move)
         if allowed:
@@ -234,13 +234,11 @@ class Checkers(Game):
                     valid_move = False
                     while not valid_move:
                         if piece.colour == Colour.BLACK:
-                            move = self._black_ai.move(must_jump=True, ind_piece=piece)
+                            move = self._player_1_ai.move(must_jump=True, ind_piece=piece)
                         else:
-                            move = self._white_ai.move(must_jump=True, ind_piece=piece)
+                            move = self._player_2_ai.move(must_jump=True, ind_piece=piece)
                         valid_move = self.check_move(move)
                     self.make_move(move)
-                if self.check_piece_can_take(piece):
-                    pass
                 self.add_state_to_game_history()
                 return True
         return False
@@ -308,9 +306,9 @@ class Checkers(Game):
             move = None
             while not valid_move:
                 if self._turn == Colour.BLACK:
-                    move = self._black_ai.move(must_jump=self.check_jump_required(Colour.BLACK), ind_piece=None)
+                    move = self._player_1_ai.move(must_jump=self.check_jump_required(Colour.BLACK), ind_piece=None)
                 else:
-                    move = self._white_ai.move(must_jump=self.check_jump_required(Colour.WHITE), ind_piece=None)
+                    move = self._player_2_ai.move(must_jump=self.check_jump_required(Colour.WHITE), ind_piece=None)
                 valid_move, style = self.check_move(move)
             self.make_move(move)
             if verbose or self._turn_count > 1000:
@@ -325,18 +323,18 @@ class Checkers(Game):
             if game_over == Result.WHITE:
                 if verbose:
                     print("White Win")
-                self._black_ai.loss()
-                self._white_ai.win()
+                self._player_1_ai.loss()
+                self._player_2_ai.win()
                 return Result.WHITE
             if game_over == Result.BLACK:
                 if verbose:
                     print("Black Win")
-                self._black_ai.win()
-                self._white_ai.loss()
+                self._player_1_ai.win()
+                self._player_2_ai.loss()
                 return Result.BLACK
             if game_over == Result.DRAW:
                 if verbose:
                     print("Draw")
-                self._black_ai.draw()
-                self._white_ai.draw()
+                self._player_1_ai.draw()
+                self._player_2_ai.draw()
                 return Result.DRAW

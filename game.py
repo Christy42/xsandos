@@ -5,6 +5,8 @@ class Game:
     def __init__(self):
         # Some games may not have a board but that can be changed later
         self._board = []
+        self._player_1_ai = None
+        self._player_2_ai = None
 
     @abstractmethod
     def print_board(self):

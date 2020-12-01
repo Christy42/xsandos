@@ -33,6 +33,8 @@ class StateLearnerAI:
         self._side = side
         self._other_side = other_side
         self.this_game_states = []
+        self._temp_game = game
+        self.ai_id = random.random()
 
     def move(self, **kwargs):
         move = self.get_best_historical_move(**kwargs)
@@ -55,12 +57,22 @@ class StateLearnerAI:
         best_move = None
         best_ranking = None
         pos_moves = self._game.possible_moves(self._side, **kwargs)
-        print("X")
-        print(len(pos_moves))
+
+        # TODO: This is a bit of a hack to deal with the second game for checkers
+        if len(pos_moves) == 0:
+            pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
         for move in pos_moves:
-            temp_game = deepcopy(self._game)
-            temp_game.make_move(deepcopy(move))
-            pos_ranking = self.get_position_rating(self.get_board_tuple(temp_game))
+            print(move)
+            del self._temp_game
+            self._temp_game = deepcopy(self._game)
+            print("BBBBB")
+            # TODO: Horrific hack, please undo, maybe have a deepcopy file in each game
+            self._temp_game._player_ai = self._game._player_1_ai
+            self._temp_game._player_2_ai = self._game._player_2_ai
+            print("CCCCCCCCC")
+            self._temp_game.game_id = random.random()
+            self._temp_game.make_move(deepcopy(move))
+            pos_ranking = self.get_position_rating(self.get_board_tuple(self._temp_game))
             if best_ranking is None or pos_ranking > best_ranking:
                 best_move = move
                 best_ranking = pos_ranking

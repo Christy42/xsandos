@@ -31,12 +31,13 @@ class Side(Enum):
 class XsAndOs(Game):
     def __init__(self, X_AIClass, O_AIClass):
         super().__init__()
-        self._x_ai = X_AIClass(self, Side.Xs, Side.Os)
-        self._o_ai = O_AIClass(self, Side.Os, Side.Xs)
+        self._player_1_ai = X_AIClass(self, Side.Xs, Side.Os)
+        self._player_2_ai = O_AIClass(self, Side.Os, Side.Xs)
         self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
         self._xs_turn = None
+        self.game_id = 1
 
     def check_end_game(self):
         for i in range(3):
@@ -69,9 +70,9 @@ class XsAndOs(Game):
             move = None
             while not valid_move:
                 if self._xs_turn:
-                    move = self._x_ai.move()
+                    move = self._player_1_ai.move()
                 else:
-                    move = self._o_ai.move()
+                    move = self._player_2_ai.move()
                 valid_move = True if self.check_move(move) else False
                 if not valid_move:
                     self.print_board()
@@ -82,21 +83,21 @@ class XsAndOs(Game):
             game_over = self.check_end_game()
             if game_over == Square.Xs:
                 print("X Win")
-                self._x_ai.win()
-                self._o_ai.loss()
+                self._player_1_ai.win()
+                self._player_2_ai.loss()
                 if verbose:
                     self.print_board()
                 return Result.Xs
             if game_over == Square.Os:
                 print("O Win")
-                self._x_ai.loss()
-                self._o_ai.win()
+                self._player_1_ai.loss()
+                self._player_2_ai.win()
                 if verbose:
                     self.print_board()
                 return Result.Os
         print("Draw")
-        self._x_ai.draw()
-        self._o_ai.draw()
+        self._player_1_ai.draw()
+        self._player_2_ai.draw()
         if verbose:
             self.print_board()
         return Result.DRAW
