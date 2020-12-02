@@ -1,4 +1,3 @@
-from copy import deepcopy
 from game import Game
 from enum import Enum
 
@@ -110,7 +109,6 @@ class Checkers(Game):
         self._turn = Colour.BLANK
         # TODO: Can we relate this to the board up above
         self._pieces = {Colour.WHITE: [], Colour.BLACK: []}
-        # print(self._board)
         for i in range(8):
             for j in range(8):
                 if self._board[i][j] != Colour.BLANK:
@@ -122,7 +120,6 @@ class Checkers(Game):
         possible_moves = []
         for piece in self._pieces[side]:
             if ind_piece:
-                print(piece.position, ind_piece.position)
                 if ind_piece.position != piece.position:
                     continue
             for direction in Direction:
@@ -193,11 +190,7 @@ class Checkers(Game):
 
     def make_move(self, move):
         # TODO: My god this hack is something horrific
-        print(move)
         piece = move[MoveCheckers.PIECE]
-        for meeple in self.pieces[move[MoveCheckers.PIECE].colour]:
-            if meeple.position == move[MoveCheckers.PIECE].position:
-                piece = meeple
         direction = move[MoveCheckers.DIRECTION]
         allowed, m_type = self.check_move(move)
         if allowed:

@@ -1,7 +1,6 @@
 import random
 from copy import deepcopy
-from xsandos import MoveXs
-from checkers import Colour, MoveCheckers
+from checkers import Colour
 
 
 class RandomAI:
@@ -32,15 +31,12 @@ class StateLearnerAI:
         self._game = game
         self._side = side
         self._other_side = other_side
-        self.this_game_states = []
+        # self.this_game_states = []
         self._temp_game = game
         self.ai_id = random.random()
 
     def move(self, **kwargs):
         move = self.get_best_historical_move(**kwargs)
-        temp_game = deepcopy(self._game)
-        temp_game.make_move(deepcopy(move))
-        self.this_game_states.append(self.get_board_tuple(temp_game))
         return move
 
     def get_position_rating(self, board_tuple):
@@ -62,7 +58,6 @@ class StateLearnerAI:
         if len(pos_moves) == 0:
             pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
         for move in pos_moves:
-            print(move)
             del self._temp_game
             self._temp_game = self._game.g_deepcopy()
             self._temp_game.make_move(deepcopy(move))
@@ -86,22 +81,22 @@ class StateLearnerAI:
 
     def win(self):
         self.update_num_seen()
-        for state in self.this_game_states:
+        for state in self._game.game_history:
             self.states_won[state] += 1
 
     def draw(self):
         self.update_num_seen()
-        for state in self.this_game_states:
+        for state in self._game.game_history:
             self.states_drawn[state] += 1
 
     def loss(self):
         self.update_num_seen()
-        for state in self.this_game_states:
+        for state in self._game.game_history:
             # print('Recording: {}'.format(state))
             self.states_lost[state] += 1
 
     def update_num_seen(self):
-        for state in self.this_game_states:
+        for state in self._game.game_history:
             if state not in self.states_seen:
                 self.states_seen[state] = 1
                 self.states_won[state] = 0

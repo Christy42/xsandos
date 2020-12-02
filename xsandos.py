@@ -23,36 +23,30 @@ class Square(Enum):
     Os = 3
 
 
-class Side(Enum):
-    Xs = 1
-    Os = 2
-
-
 class XsAndOs(Game):
     def __init__(self, X_AIClass, O_AIClass):
         super().__init__()
-        self._player_1_ai = X_AIClass(self, Side.Xs, Side.Os)
-        self._player_2_ai = O_AIClass(self, Side.Os, Side.Xs)
+        self._player_1_ai = X_AIClass(self, Square.Xs, Square.Os)
+        self._player_2_ai = O_AIClass(self, Square.Os, Square.Xs)
         self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
         self._xs_turn = None
+        self.game_history = []
+        self.add_state_to_game_history()
 
     def check_end_game(self):
         for i in range(3):
             if self._board[i][0] == self._board[i][1] == self._board[i][2]:
                 return self._board[i][0]
-        for i in range(3):
             if self._board[0][i] == self._board[1][i] == self._board[2][i]:
                 return self._board[0][i]
-        if self._board[0][0] == self._board[1][1] == self._board[2][2]:
-            return self._board[1][1]
-        if self._board[0][2] == self._board[1][1] == self._board[2][0]:
+        if (self._board[0][0] == self._board[1][1] == self._board[2][2]) or \
+                (self._board[0][2] == self._board[1][1] == self._board[2][0]):
             return self._board[1][1]
         return False
 
     def make_move(self, move):
-        # TODO: Slightly clunky, might be better with dicts
         self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] = move[MoveXs.SIDE]
 
     def check_move(self, move):
@@ -68,10 +62,7 @@ class XsAndOs(Game):
             valid_move = False
             move = None
             while not valid_move:
-                if self._xs_turn:
-                    move = self._player_1_ai.move()
-                else:
-                    move = self._player_2_ai.move()
+                move = self._player_1_ai.move() if self._xs_turn else self._player_2_ai.move()
                 valid_move = True if self.check_move(move) else False
                 if not valid_move:
                     self.print_board()
@@ -101,7 +92,7 @@ class XsAndOs(Game):
             self.print_board()
         return Result.DRAW
 
-    def possible_moves(self, side: Side, ind_piece=None):
+    def possible_moves(self, side: Square, ind_piece=None):
         possible_moves = []
         side = Square.Xs if self._xs_turn else Square.Os
         for i in range(len(self._board)):
@@ -124,9 +115,22 @@ class XsAndOs(Game):
             print(line)
         print('-'*12)
 
+    def add_state_to_game_history(self):
+        board_list = []
+        for i in range(3):
+            for j in range(3):
+                position_char = ' '
+                if self._board[i][j] == Square.Xs:
+                    position_char = 'X'
+                elif self._board[i][j] == Square.Os:
+                    position_char = 'O'
+                board_list.append(position_char)
+        board_string = ''.join(board_list)
+        self.game_history.append(board_string)
+
 
 class BruteForceAI:
-    def __init__(self, game: XsAndOs, side: Side):
+    def __init__(self, game: XsAndOs, side: Square):
         self._game = game
         self._side = side
         
@@ -147,10 +151,9 @@ class BruteForceAI:
     
                 
 class NewellSimonAI:
-    def __init__(self, game: XsAndOs, side: Side, other_side: Side):
+    def __init__(self, game: XsAndOs, side: Square, other_side: Square):
         self._game = game
         self._side = side
-        self._my_square = (Square.Xs if self._side == Side.Xs else Square.Os)
         self._board = np.zeros((3, 3))
 
     def move(self):
@@ -268,7 +271,7 @@ class NewellSimonAI:
         '''Store game board as np array for easier slicing.'''
         for i in range(3):
             for j in range(3):
-                if self._game.board[i][j] == self._my_square:
+                if self._game.board[i][j] == self._side:
                     self._board[i, j] = 1
                 elif self._game.board[i][j] != Square.BLANK:
                     self._board[i, j] = -1

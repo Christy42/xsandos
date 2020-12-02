@@ -6,7 +6,7 @@ from xsandos import XsAndOs, NewellSimonAI
 from AIhub import *
 
 
-game = "xsandos"
+game = "checkers"
 
 if game == "xsandos":
     print('X - NewellSimonAI; O - StateLearnerAI')
