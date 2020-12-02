@@ -64,13 +64,7 @@ class StateLearnerAI:
         for move in pos_moves:
             print(move)
             del self._temp_game
-            self._temp_game = deepcopy(self._game)
-            print("BBBBB")
-            # TODO: Horrific hack, please undo, maybe have a deepcopy file in each game
-            self._temp_game._player_ai = self._game._player_1_ai
-            self._temp_game._player_2_ai = self._game._player_2_ai
-            print("CCCCCCCCC")
-            self._temp_game.game_id = random.random()
+            self._temp_game = self._game.g_deepcopy()
             self._temp_game.make_move(deepcopy(move))
             pos_ranking = self.get_position_rating(self.get_board_tuple(self._temp_game))
             if best_ranking is None or pos_ranking > best_ranking:

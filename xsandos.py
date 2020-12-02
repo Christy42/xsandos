@@ -37,7 +37,6 @@ class XsAndOs(Game):
                        [Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
         self._xs_turn = None
-        self.game_id = 1
 
     def check_end_game(self):
         for i in range(3):

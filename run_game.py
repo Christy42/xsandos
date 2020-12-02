@@ -1,8 +1,8 @@
 import os, pickle
 
 
-from checkers import Checkers, MoveCheckers, Result
-from xsandos import MoveXs, XsAndOs, NewellSimonAI
+from checkers import Checkers, Result
+from xsandos import XsAndOs, NewellSimonAI
 from AIhub import *
 
 

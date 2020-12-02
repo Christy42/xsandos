@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from copy import deepcopy
 
 
 class Game:
@@ -11,6 +12,13 @@ class Game:
     @abstractmethod
     def print_board(self):
         pass
+
+    def g_deepcopy(self):
+        game = deepcopy(self)
+        del game._player_1_ai, game._player_2_ai
+        game._player_1_ai = self._player_1_ai
+        game._player_2_ai = self._player_2_ai
+        return game
 
     @property
     def board(self):

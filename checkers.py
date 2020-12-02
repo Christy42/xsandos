@@ -86,7 +86,6 @@ class Piece:
 class Checkers(Game):
     def __init__(self, Black_AIClass=None, White_AIClass=None, board=None):
         super().__init__()
-        self.game_id = 1
         if board:
             self._board = [[board[i] for i in range(j, j+8)] for j in [8 * k for k in range(8)]]
         else:
@@ -116,7 +115,6 @@ class Checkers(Game):
             for j in range(8):
                 if self._board[i][j] != Colour.BLANK:
                     self._pieces[self._board[i][j]].append(Piece(self._board[i][j], [i, j]))
-
         self.game_history = []
         self.add_state_to_game_history()
 
