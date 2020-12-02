@@ -98,14 +98,8 @@ class Checkers(Game):
                            [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
         self._turn_count = 0
         self.turns_since_last_piece_taken = 0
-        if Black_AIClass:
-            self._player_1_ai = Black_AIClass(self, Colour.BLACK, Colour.WHITE)
-        else:
-            self._player_1_ai = None
-        if White_AIClass:
-            self._player_2_ai = White_AIClass(self, Colour.WHITE, Colour.BLACK)
-        else:
-            self._player_2_ai = None
+        self._ais = {Colour.BLACK: Black_AIClass(self, Colour.BLACK, Colour.WHITE), Colour.WHITE: White_AIClass(self, Colour.WHITE, Colour.BLACK)}
+
         self._turn = Colour.BLANK
         # TODO: Can we relate this to the board up above
         self._pieces = {Colour.WHITE: [], Colour.BLACK: []}
@@ -189,7 +183,7 @@ class Checkers(Game):
         return True, MoveType.MOVE
 
     def make_move(self, move):
-        # TODO: My god this hack is something horrific, this ensures that the piece selected is in this verion of the
+        # TODO: My god this hack is something horrific, this ensures that the piece selected is in this version of the
         # game.  Maybe the move should just include co-ordinates and not the piece object?
         piece = move[MoveCheckers.PIECE]
         for meeple in self._pieces[Colour.WHITE] + self._pieces[Colour.BLACK]:
@@ -229,10 +223,7 @@ class Checkers(Game):
                 if self.check_piece_can_take(piece):
                     valid_move = False
                     while not valid_move:
-                        if piece.colour == Colour.BLACK:
-                            move = self._player_1_ai.move(must_jump=True, ind_piece=piece)
-                        else:
-                            move = self._player_2_ai.move(must_jump=True, ind_piece=piece)
+                        move = self._ais[piece.colour].move(must_jump=True, ind_piece=piece)
                         valid_move = self.check_move(move)
                     self.make_move(move)
                 self.add_state_to_game_history()
@@ -294,6 +285,14 @@ class Checkers(Game):
                     return False
         return Result.WHITE if colour == Colour.BLACK else Result.BLACK
 
+    @staticmethod
+    def result_to_colour(result):
+        return Colour.BLACK if result == Result.BLACK else Colour.WHITE
+
+    @staticmethod
+    def other_colour(colour):
+        return Colour.BLACK if colour == Colour.WHITE else Colour.WHITE
+
     def start_game(self, verbose=False):
         self._turn = Colour.BLACK
         while True:
@@ -301,10 +300,7 @@ class Checkers(Game):
             valid_move = False
             move = None
             while not valid_move:
-                if self._turn == Colour.BLACK:
-                    move = self._player_1_ai.move(must_jump=self.check_jump_required(Colour.BLACK), ind_piece=None)
-                else:
-                    move = self._player_2_ai.move(must_jump=self.check_jump_required(Colour.WHITE), ind_piece=None)
+                move = self._ais[self._turn].move(must_jump=self.check_jump_required(Colour.BLACK), ind_piece=None)
                 valid_move, style = self.check_move(move)
             self.make_move(move)
             if verbose or self._turn_count > 1000:
@@ -316,21 +312,16 @@ class Checkers(Game):
                 self.print_board()
             self._turn = Colour.WHITE if self._turn == Colour.BLACK else Colour.BLACK
             game_over = self.check_end_game(self._turn)
-            if game_over == Result.WHITE:
-                if verbose:
-                    print("White Win")
-                self._player_1_ai.loss()
-                self._player_2_ai.win()
-                return Result.WHITE
-            if game_over == Result.BLACK:
-                if verbose:
-                    print("Black Win")
-                self._player_1_ai.win()
-                self._player_2_ai.loss()
-                return Result.BLACK
             if game_over == Result.DRAW:
                 if verbose:
                     print("Draw")
-                self._player_1_ai.draw()
-                self._player_2_ai.draw()
+                self._ais[Colour.WHITE].draw()
+                self._ais[Colour.BLACK].draw()
                 return Result.DRAW
+            if game_over:
+                if verbose:
+                    print(str(game_over).replace("Result.", "") + " Wins")
+                self._ais[self.result_to_colour(game_over)].win()
+                self._ais[self.other_colour(self.result_to_colour(game_over))].loss()
+                return game_over
+

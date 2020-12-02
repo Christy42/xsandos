@@ -16,7 +16,7 @@ class MoveXs(Enum):
     COLUMN = 3
 
 
-# TODO: Square and Side should be brought to one of them
+# TODO: Square/Colour can be cleaned up and some of the functionality used can be moved to super class
 class Square(Enum):
     BLANK = 1
     Xs = 2
@@ -26,23 +26,22 @@ class Square(Enum):
 class XsAndOs(Game):
     def __init__(self, X_AIClass, O_AIClass):
         super().__init__()
-        self._player_1_ai = X_AIClass(self, Square.Xs, Square.Os)
-        self._player_2_ai = O_AIClass(self, Square.Os, Square.Xs)
+        self._ais = {Square.Xs: X_AIClass(self, Square.Xs, Square.Os), Square.Os: O_AIClass(self, Square.Os, Square.Xs)}
         self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
-        self._xs_turn = None
+        self._turn = Square.Xs
         self.game_history = []
         self.add_state_to_game_history()
 
     def check_end_game(self):
         for i in range(3):
-            if self._board[i][0] == self._board[i][1] == self._board[i][2]:
+            if self._board[i][0] == self._board[i][1] == self._board[i][2] and self._board[i][0] != Square.BLANK:
                 return self._board[i][0]
-            if self._board[0][i] == self._board[1][i] == self._board[2][i]:
+            if self._board[0][i] == self._board[1][i] == self._board[2][i] and self._board[0][i] != Square.BLANK:
                 return self._board[0][i]
-        if (self._board[0][0] == self._board[1][1] == self._board[2][2]) or \
-                (self._board[0][2] == self._board[1][1] == self._board[2][0]):
+        if ((self._board[0][0] == self._board[1][1] == self._board[2][2]) or
+                (self._board[0][2] == self._board[1][1] == self._board[2][0])) and self._board[1][1] != Square.BLANK:
             return self._board[1][1]
         return False
 
@@ -52,53 +51,53 @@ class XsAndOs(Game):
     def check_move(self, move):
         return self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] == Square.BLANK
 
+    # TODO: If sides get normalised these could be in the super class
+    @staticmethod
+    def other_side(side):
+        return Square.Os if side == Square.Xs else Square.Xs
+
+    @staticmethod
+    def side_to_result(side):
+        return Result.Os if side == Square.Os else Result.Xs
+
     def start_game(self, verbose=False):
         if verbose:
             print('New game')
-        self._xs_turn = True
         for i in range(9):
             if verbose:
                 self.print_board()
             valid_move = False
             move = None
             while not valid_move:
-                move = self._player_1_ai.move() if self._xs_turn else self._player_2_ai.move()
+                move = self._ais[self._turn].move()
                 valid_move = True if self.check_move(move) else False
                 if not valid_move:
                     self.print_board()
                     assert 0
 
             self.make_move(move)
-            self._xs_turn = not self._xs_turn
+            self._turn = self.other_side(self._turn)
             game_over = self.check_end_game()
-            if game_over == Square.Xs:
-                print("X Win")
-                self._player_1_ai.win()
-                self._player_2_ai.loss()
+            if game_over:
+                print(str(game_over).replace("Squares.", "").replace("s", "") + " Win")
+                self._ais[game_over].win()
+                self._ais[self.other_side(game_over)].loss()
                 if verbose:
                     self.print_board()
-                return Result.Xs
-            if game_over == Square.Os:
-                print("O Win")
-                self._player_1_ai.loss()
-                self._player_2_ai.win()
-                if verbose:
-                    self.print_board()
-                return Result.Os
+                return self.side_to_result(game_over)
         print("Draw")
-        self._player_1_ai.draw()
-        self._player_2_ai.draw()
+        self._ais[Square.Xs].draw()
+        self._ais[Square.Os].draw()
         if verbose:
             self.print_board()
         return Result.DRAW
 
     def possible_moves(self, side: Square, ind_piece=None):
         possible_moves = []
-        side = Square.Xs if self._xs_turn else Square.Os
         for i in range(len(self._board)):
             for j in range(len(self._board)):
                 if self._board[i][j] == Square.BLANK:
-                    possible_moves.append({MoveXs.SIDE: side, MoveXs.ROW: i, MoveXs.COLUMN: j})
+                    possible_moves.append({MoveXs.SIDE: self._turn, MoveXs.ROW: i, MoveXs.COLUMN: j})
         return possible_moves
 
     def print_board(self):

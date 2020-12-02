@@ -6,19 +6,21 @@ class Game:
     def __init__(self):
         # Some games may not have a board but that can be changed later
         self._board = []
-        self._player_1_ai = None
-        self._player_2_ai = None
+        self._ais = {}
 
     @abstractmethod
     def print_board(self):
         pass
 
-    def g_deepcopy(self):
+    def g_deepcopy(self, ais):
         game = deepcopy(self)
-        del game._player_1_ai, game._player_2_ai
-        game._player_1_ai = self._player_1_ai
-        game._player_2_ai = self._player_2_ai
+        del game._ais
+        game._ais = ais
         return game
+
+    @property
+    def ais(self):
+        return self._ais
 
     @property
     def board(self):
@@ -28,13 +30,12 @@ class Game:
     def possible_moves(self, **kwargs):
         pass
 
-    # TODO: kwargs abused a bit in subclasses I feel
     @abstractmethod
     def check_end_game(self, **kwargs):
         pass
 
     @abstractmethod
-    def make_move(self, **kwargs):
+    def make_move(self, move):
         pass
 
     @abstractmethod
