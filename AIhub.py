@@ -54,7 +54,7 @@ class StateLearnerAI:
         best_ranking = None
         pos_moves = self._game.possible_moves(self._side, **kwargs)
 
-        # TODO: This is a bit of a hack to deal with the second game for checkers
+        # TODO: This is a bit of a hack to deal with the second move for checkers
         if len(pos_moves) == 0:
             pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
         for move in pos_moves:

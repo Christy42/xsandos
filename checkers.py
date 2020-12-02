@@ -189,8 +189,13 @@ class Checkers(Game):
         return True, MoveType.MOVE
 
     def make_move(self, move):
-        # TODO: My god this hack is something horrific
+        # TODO: My god this hack is something horrific, this ensures that the piece selected is in this verion of the
+        # game.  Maybe the move should just include co-ordinates and not the piece object?
         piece = move[MoveCheckers.PIECE]
+        for meeple in self._pieces[Colour.WHITE] + self._pieces[Colour.BLACK]:
+            if meeple.position == piece.position:
+                piece = meeple
+
         direction = move[MoveCheckers.DIRECTION]
         allowed, m_type = self.check_move(move)
         if allowed:
