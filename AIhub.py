@@ -1,4 +1,5 @@
 import random
+from math import inf
 from copy import deepcopy
 from checkers import Colour
 
@@ -121,6 +122,27 @@ class AlphaBeta:
 
     def move(self, **kwargs):
         return random.choice(self._game.possible_moves(self._side))
+
+    def alphabeta(self, node, depth, alpha, beta, maximizingPlayer):
+        if depth == 0 or self._game.check_end_game():
+            return 0
+
+        if maximizingPlayer:
+            value = -inf
+            for child in node:
+                value = max(value, self.alphabeta(child, depth - 1, alpha, beta, False))
+                alpha = max(alpha, value)
+                if alpha >= beta:
+                    # (*β cutoff *)
+                    return value
+        else:
+            value = +inf
+            for child in node:
+                value = min(value, self.alphabeta(child, depth - 1, alpha, beta, True))
+                beta = min(beta, value)
+                if beta >= alpha:
+                    # (*α cutoff *)
+                    return value
 
     def win(self):
         pass
