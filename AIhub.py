@@ -2,6 +2,7 @@ import random
 from math import inf
 from copy import deepcopy
 from checkers import Colour
+from game import Game
 
 
 class RandomAI:
@@ -137,17 +138,23 @@ class AlphaBeta:
         print("alpha beta finished")
         return best_move
 
-    def alphabeta(self, node, depth, alpha, beta, maximizingPlayer):
+    def alphabeta(self, node: Game, depth: int, alpha: int, beta: int, maximizing_player: bool):
         if depth == 0 or self._game.check_end_game():
-            return 0
+            total = 0
+            # TODO: Have this sub-function as an input into the AI so it can be more general
+            # Should probably value a 0 from one side far more heavily
+            for piece in node.pieces[self._side]:
+                total += 0 if piece.is_dead else 5 if piece.king else 3
+            for piece in node.pieces[self._other_side]:
+                total -= 0 if piece.is_dead else 5 if piece.king else 3
+            return total + random.random()
 
-        if maximizingPlayer:
+        if maximizing_player:
             value = -inf
-            for child in node:
+            for child in node: # need child to be something sensible here
                 value = max(value, self.alphabeta(child, depth - 1, alpha, beta, False))
                 alpha = max(alpha, value)
                 if alpha >= beta:
-                    # (*β cutoff *)
                     return value
         else:
             value = +inf
@@ -155,7 +162,6 @@ class AlphaBeta:
                 value = min(value, self.alphabeta(child, depth - 1, alpha, beta, True))
                 beta = min(beta, value)
                 if beta >= alpha:
-                    # (*α cutoff *)
                     return value
 
     def win(self):

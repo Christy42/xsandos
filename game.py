@@ -7,6 +7,12 @@ class Game:
         # Some games may not have a board but that can be changed later
         self._board = []
         self._ais = {}
+        self._pieces = {} # May not be needed for a game but can be ignored
+
+
+    @property
+    def pieces(self):
+        return self._pieces
 
     @abstractmethod
     def print_board(self):
