@@ -121,7 +121,21 @@ class AlphaBeta:
         self._other_side = other_side
 
     def move(self, **kwargs):
-        return random.choice(self._game.possible_moves(self._side))
+        print("alpha beta move")
+        best_move = None
+        best_value = -inf
+        moves_possible = self._game.possible_moves(self._side)
+        for move in moves_possible:
+            # make move into a game board
+            # Could depth be optimised by if we have to jump or use a specific piece as there are less options
+            move_game = self.make_game_board(self._game, deepcopy(move))
+            self._temp_game = deepcopy(move_game)
+            new_value = self.alphabeta(move_game, 3, -inf, inf, True)
+            if new_value > best_value:
+                best_move = move
+                best_value = new_value
+        print("alpha beta finished")
+        return best_move
 
     def alphabeta(self, node, depth, alpha, beta, maximizingPlayer):
         if depth == 0 or self._game.check_end_game():
