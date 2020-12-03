@@ -55,6 +55,10 @@ class Piece:
     def colour(self):
         return self._colour
 
+    @property
+    def is_dead(self):
+        return self._position[0] < 0
+
     def move(self, direction: Direction):
         self._position = Checkers.adj_square(self._position, direction)
 
@@ -260,8 +264,8 @@ class Checkers(Game):
 
     def check_end_game(self):
         if self._turn_count > 100:
-            white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] >= 0]
-            black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] >= 0]
+            white_pieces = [piece for piece in self._pieces[Colour.WHITE] if not piece.is_dead]
+            black_pieces = [piece for piece in self._pieces[Colour.BLACK] if not piece.is_dead]
             if len(white_pieces) > len(black_pieces):
                 return Result.WHITE
             if len(black_pieces) > len(white_pieces):
@@ -272,7 +276,7 @@ class Checkers(Game):
         colour = self._turn
         for piece in self._pieces[colour]:
             # The dead don't move
-            if piece.position[0] < 0:
+            if piece.is_dead:
                 continue
             if self.check_piece_can_take(piece):
                 return False
