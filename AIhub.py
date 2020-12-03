@@ -111,3 +111,22 @@ class ProjectedStateLearnerAI(StateLearnerAI):
                 elif board[i][j] != Colour.BLANK:
                     their_piece_count += 1
         return (my_piece_count - their_piece_count,)
+
+
+class AlphaBeta:
+    def __init__(self, game, side, other_side):
+        self._game = game
+        self._side = side
+        self._other_side = other_side
+
+    def move(self, **kwargs):
+        return random.choice(self._game.possible_moves(self._side))
+
+    def win(self):
+        pass
+
+    def draw(self):
+        pass
+
+    def loss(self):
+        pass
