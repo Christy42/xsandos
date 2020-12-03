@@ -258,7 +258,7 @@ class Checkers(Game):
                 [-1, -1] if direc == Direction.UP_LEFT else
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
-    def check_end_game(self, colour: Colour):
+    def check_end_game(self):
         if self._turn_count > 100:
             white_pieces = [piece for piece in self._pieces[Colour.WHITE] if piece.position[0] >= 0]
             black_pieces = [piece for piece in self._pieces[Colour.BLACK] if piece.position[0] >= 0]
@@ -269,6 +269,7 @@ class Checkers(Game):
             return Result.DRAW
         if self.turns_since_last_piece_taken >= 100:
             return Result.DRAW
+        colour = self._turn
         for piece in self._pieces[colour]:
             # The dead don't move
             if piece.position[0] < 0:
@@ -311,7 +312,7 @@ class Checkers(Game):
                 print(self.turns_since_last_piece_taken)
                 self.print_board()
             self._turn = Colour.WHITE if self._turn == Colour.BLACK else Colour.BLACK
-            game_over = self.check_end_game(self._turn)
+            game_over = self.check_end_game()
             if game_over == Result.DRAW:
                 if verbose:
                     print("Draw")
