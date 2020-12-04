@@ -54,11 +54,16 @@ class StateLearnerAI:
         best_ranking = None
         pos_moves = self._game.possible_moves(self._side, **kwargs)
         # TODO: This is a bit of a hack to deal with the second move for checkers
+        temp_game_used = False
         if len(pos_moves) == 0:
             pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
+            temp_game_used = True  # if we are basing possible moves off of temp game we should build from that
         for move in pos_moves:
-            del self._temp_game
-            self._temp_game = self._game.g_deepcopy(self._game.ais)
+            if temp_game_used:
+                self._temp_game = self._temp_game.g_deepcopy(self._game.ais)
+            else:
+                del self._temp_game
+                self._temp_game = self._game.g_deepcopy(self._game.ais)
             self._temp_game.make_move(deepcopy(move))
             pos_ranking = self.get_position_rating(self.get_board_tuple(self._temp_game))
             if best_ranking is None or pos_ranking > best_ranking:
@@ -120,25 +125,34 @@ class AlphaBeta:
         self._game = game
         self._side = side
         self._other_side = other_side
+        self._temp_game = game
 
     def move(self, **kwargs):
         print("alpha beta move")
         best_move = None
         best_value = -inf
-        moves_possible = self._game.possible_moves(self._side)
-        for move in moves_possible:
-            # make move into a game board
+        pos_moves = self._game.possible_moves(self._side, **kwargs)
+        temp_game_used = False
+        # TODO: This is a bit of a hack to deal with the second move for checkers
+        if len(pos_moves) == 0:
+            pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
+            temp_game_used = True  # if we are basing possible moves off of temp game we should build from that
+        for move in pos_moves:
             # Could depth be optimised by if we have to jump or use a specific piece as there are less options
-            move_game = self.make_game_board(self._game, deepcopy(move))
-            self._temp_game = deepcopy(move_game)
-            new_value = self.alphabeta(move_game, 3, -inf, inf, True)
+            if temp_game_used:
+                self._temp_game = self._temp_game.g_deepcopy()  # will this delete the original or a small memory leak?
+            else:
+                del self._temp_game
+                self._temp_game = self._game.g_deepcopy(self._game.ais)
+            self._temp_game.make_move(deepcopy(move))
+            new_value = self.alphabeta(self._temp_game, 3, -inf, inf, True, **kwargs)
             if new_value > best_value:
                 best_move = move
                 best_value = new_value
         print("alpha beta finished")
         return best_move
 
-    def alphabeta(self, node: Game, depth: int, alpha: int, beta: int, maximizing_player: bool):
+    def alphabeta(self, node: Game, depth: int, alpha: int, beta: int, maximizing_player: bool, **kwargs):
         if depth == 0 or self._game.check_end_game():
             total = 0
             # TODO: Have this sub-function as an input into the AI so it can be more general
@@ -147,22 +161,28 @@ class AlphaBeta:
                 total += 0 if piece.is_dead else 5 if piece.king else 3
             for piece in node.pieces[self._other_side]:
                 total -= 0 if piece.is_dead else 5 if piece.king else 3
-            return total + random.random()
+            return total + random.random()  # random values are try and ensure that ties get picked differently
 
         if maximizing_player:
             value = -inf
-            for child in node: # need child to be something sensible here
-                value = max(value, self.alphabeta(child, depth - 1, alpha, beta, False))
+            for child in node.possible_moves(**kwargs):  # need child to be something sensible here
+                del self._temp_game
+                self._temp_game = self._game.g_deepcopy()
+                self._temp_game.make_move(deepcopy(child))
+                value = max(value, self.alphabeta(self._temp_game, depth - 1, alpha, beta, False))
                 alpha = max(alpha, value)
                 if alpha >= beta:
-                    return value
+                    return value + random.random()
         else:
             value = +inf
             for child in node:
-                value = min(value, self.alphabeta(child, depth - 1, alpha, beta, True))
+                del self._temp_game
+                self._temp_game = self._game.g_deepcopy()
+                self._temp_game.make_move(deepcopy(child))
+                value = min(value, self.alphabeta(self._temp_game, depth - 1, alpha, beta, True))
                 beta = min(beta, value)
-                if beta >= alpha:
-                    return value
+                if beta <= alpha:
+                    return value + random.random()
 
     def win(self):
         pass
