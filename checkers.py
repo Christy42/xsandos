@@ -149,6 +149,10 @@ class Checkers(Game):
                                255 if self._board[i][j] == Colour.BLANK else 0, str(self._board[i][j])) for j in
                        range(8)]
             print(sum_l(new_row))
+        print([val.position for val in self._pieces[Colour.WHITE]])
+        print(self._pieces[Colour.WHITE])
+        print([val.position for val in self._pieces[Colour.BLACK]])
+        print(self._pieces[Colour.BLACK])
 
     @property
     def pieces(self):
@@ -156,6 +160,8 @@ class Checkers(Game):
 
     def check_move(self, move):
         # TODO: Double check that the right colour is being picked
+        # print("AAAAAAAAAAAAAAAA")
+        # print(move)
         piece = move[MoveCheckers.PIECE]
         direction = move[MoveCheckers.DIRECTION]
         # Piece already taken
@@ -228,7 +234,13 @@ class Checkers(Game):
                     valid_move = False
                     while not valid_move:
                         move = self._ais[piece.colour].move(must_jump=True, ind_piece=piece)
+                        print(self._ais[piece.colour].id_val)
+                        print("BBBBBBB")
+                        print(move)
+                        print(move[MoveCheckers.PIECE].position)
+                        print([pi.position for pi in self._pieces[self._turn]])
                         valid_move = self.check_move(move)
+                        print(valid_move)
                     self.make_move(move)
                 self.add_state_to_game_history()
                 return True

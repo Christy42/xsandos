@@ -32,7 +32,7 @@ if game == "xsandos":
 if game == "checkers":
     # checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
     # checkers.start_game(verbose=False)
-    black_class = StateLearnerAI
+    black_class = AlphaBetaAI
     white_class = StateLearnerAI
     print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
     wins = 0
