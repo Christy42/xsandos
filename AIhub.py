@@ -33,7 +33,6 @@ class StateLearnerAI:
         self._game = game
         self._side = side
         self._other_side = other_side
-        self._temp_game = game
         self.id_val = 2
 
     def move(self, **kwargs):
@@ -54,19 +53,12 @@ class StateLearnerAI:
         best_move = None
         best_ranking = None
         pos_moves = self._game.possible_moves(self._side, **kwargs)
-        # TODO: This is a bit of a hack to deal with the second move for checkers
-        temp_game_used = False
-        if len(pos_moves) == 0:
-            pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
-            temp_game_used = True  # if we are basing possible moves off of temp game we should build from that
+        assert len(pos_moves) > 0
+
         for move in pos_moves:
-            if temp_game_used:
-                self._temp_game = self._temp_game.g_deepcopy(self._game.ais)
-            else:
-                del self._temp_game
-                self._temp_game = self._game.g_deepcopy(self._game.ais)
-            self._temp_game.make_move(deepcopy(move))
-            pos_ranking = self.get_position_rating(self.get_board_tuple(self._temp_game))
+            temp_game = self._game.copy(include_history=False) #deepcopy(self._game)
+            temp_game.make_move(move)
+            pos_ranking = self.get_position_rating(self.get_board_tuple(temp_game))
             if best_ranking is None or pos_ranking > best_ranking:
                 best_move = move
                 best_ranking = pos_ranking
@@ -134,46 +126,22 @@ class AlphaBetaAI:
         best_move = None
         best_value = -inf
         pos_moves = self._game.possible_moves(self._side, **kwargs)
-        temp_game_used = False
-        # TODO: This is a bit of a hack to deal with the second move for checkers
-        if len(pos_moves) == 0:
-            pos_moves = self._temp_game.possible_moves(self._side, **kwargs)
-            temp_game_used = True  # if we are basing possible moves off of temp game we should build from that
-        print(pos_moves)
-        if len(pos_moves) == 0:
-            print("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
-            print([value for value in kwargs.values()][1].position)
-            self._game.print_board()
-            print("")
-            self._temp_game.print_board()
-        print([value for value in kwargs.values()])
-        print("Loop Start")
+
+        assert len(pos_moves) > 0
+
         for move in pos_moves:
             # Could depth be optimised by if we have to jump or use a specific piece as there are less options
-            if temp_game_used:
-                self._temp_game = self._temp_game.g_deepcopy(self._game.ais)  # possible memory leak (small)?
-            else:
-                del self._temp_game
-                self._temp_game = self._game.g_deepcopy(self._game.ais)
-
-            # print(move)
-            # print("HHHHHHHHHHHHHHHHH")
-            self._temp_game.make_move(deepcopy(move))
-            new_value = self.alphabeta(self._temp_game, 3, -inf, inf, True, **kwargs)
-            # print("QQQQQQQQQQQQQQQQQQQQQQQQQQQ")
-            # print(new_value)
-            # print(best_value)
+            temp_game = self._game.copy(include_history=False) #deepcopy(self._game)
+            temp_game.make_move(deepcopy(move))
+            new_value = self.alphabeta(temp_game, 3, -inf, inf, True, **kwargs)
             if new_value >= best_value:
                 best_move = move
                 best_value = new_value
-        # print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-        # print(pos_moves)
-        # print(best_move)
-        # print("alpha beta finished")
+        assert best_move is not None
         return best_move
 
     def alphabeta(self, node: Game, depth: int, alpha: int, beta: int, maximizing_player: bool, **kwargs):
-        if depth == 0 or self._game.check_end_game():
+        if depth == 0 or node.check_end_game():
             total = 0
             # TODO: Have this sub-function as an input into the AI so it can be more general
             # Should probably value a 0 from one side far more heavily
@@ -186,14 +154,9 @@ class AlphaBetaAI:
         if maximizing_player:
             value = -inf
             for child in node.possible_moves(side=self._side, **kwargs):  # need child to be something sensible here
-                del self._temp_game
-                # print(node.possible_moves(side=self._other_side, **kwargs))
-                # print(val for val in kwargs)
-                # print(child)
-                # print("XXXXXX")
-                self._temp_game = self._game.g_deepcopy(self._game.ais)
-                self._temp_game.make_move(deepcopy(child))
-                value = max(value, self.alphabeta(self._temp_game, depth - 1, alpha, beta, False))
+                temp_game = node.copy(include_history=False) #deepcopy(node)
+                temp_game.make_move(deepcopy(child))
+                value = max(value, self.alphabeta(temp_game, depth - 1, alpha, beta, temp_game.next_player == self._side))
                 alpha = max(alpha, value)
                 if alpha >= beta:
                     return value + random.random()
@@ -201,14 +164,9 @@ class AlphaBetaAI:
         else:
             value = +inf
             for child in node.possible_moves(side=self._other_side, **kwargs):
-                # print(node.possible_moves(side=self._other_side, **kwargs))
-                # print(val for val in kwargs)
-                # print(child)
-                # print("YYYYYYY")
-                del self._temp_game
-                self._temp_game = self._game.g_deepcopy(self._game.ais)
-                self._temp_game.make_move(deepcopy(child))
-                value = min(value, self.alphabeta(self._temp_game, depth - 1, alpha, beta, True))
+                temp_game = node.copy(include_history=False) #deepcopy(node)
+                temp_game.make_move(deepcopy(child))
+                value = min(value, self.alphabeta(temp_game, depth - 1, alpha, beta, temp_game.next_player == self._side))
                 beta = min(beta, value)
                 if beta <= alpha:
                     return value + random.random()
