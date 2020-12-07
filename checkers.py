@@ -1,4 +1,4 @@
-from game import Game
+from game import Game, GameRunner
 from enum import Enum
 
 
@@ -23,6 +23,8 @@ class Result(Enum):
     BLACK = 2
     DRAW = 3
 
+    def to_colour(self):
+        return Colour.BLACK if self.value == Result.BLACK else Colour.WHITE
 
 class MoveType(Enum):
     MOVE = 1
@@ -34,6 +36,9 @@ class Colour(Enum):
     WHITE = 2
     BLACK = 3
 
+    def other_colour(self):
+        return Colour.BLACK if self.value == Colour.WHITE else Colour.WHITE
+    
 
 class Direction(Enum):
     UP_RIGHT = 1  # [-1, 1]
@@ -51,6 +56,12 @@ class Piece:
         self._direction = [Direction.UP_RIGHT, Direction.UP_LEFT] if colour == Colour.BLACK else \
             [Direction.DOWN_RIGHT, Direction.DOWN_LEFT]
 
+    def copy(self):
+        piece_copy = Piece(self.colour, self.position[:])
+        piece_copy._king = self._king
+        piece_copy._direction = self._direction[:]
+        return piece_copy
+        
     @property
     def colour(self):
         return self._colour
@@ -87,11 +98,12 @@ class Piece:
 
 
 class Checkers(Game):
-    def __init__(self, Black_AIClass=None, White_AIClass=None, board=None):
+    def __init__(self, board=None):
         super().__init__()
         if board:
             self._board = [[board[i] for i in range(j, j+8)] for j in [8 * k for k in range(8)]]
         else:
+            self._next_player = Colour.BLACK
             self._board = [[Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
                            [Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK],
                            [Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE, Colour.BLANK, Colour.WHITE],
@@ -102,9 +114,7 @@ class Checkers(Game):
                            [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
         self._turn_count = 0
         self.turns_since_last_piece_taken = 0
-        self._ais = {Colour.BLACK: Black_AIClass(self, Colour.BLACK, Colour.WHITE), Colour.WHITE: White_AIClass(self, Colour.WHITE, Colour.BLACK)}
 
-        self._turn = Colour.BLANK
         # TODO: Can we relate this to the board up above
         self._pieces = {Colour.WHITE: [], Colour.BLACK: []}
         for i in range(8):
@@ -114,6 +124,23 @@ class Checkers(Game):
         self.game_history = []
         self.add_state_to_game_history()
 
+    def copy(self, include_history=True):
+        game_copy = Checkers()
+        for i in range(len(game_copy._board)):
+            game_copy._board[i] = self._board[i][:]
+        game_copy._next_player = self._next_player
+        game_copy._turn_count = self._turn_count
+        game_copy.turns_since_last_piece_taken = self.turns_since_last_piece_taken
+
+        game_copy._pieces = {}
+        for key in self._pieces:
+            game_copy._pieces[key] = [p.copy() for p in self._pieces[key]]
+
+        game_copy.game_history = []
+        if include_history:
+            game_copy.game_history = deepcopy(self.game_history)
+        return game_copy
+            
     def possible_moves(self, side: Colour, must_jump=False, ind_piece=None):
         possible_moves = []
         for piece in self._pieces[side]:
@@ -202,49 +229,55 @@ class Checkers(Game):
 
         direction = move[MoveCheckers.DIRECTION]
         allowed, m_type = self.check_move(move)
-        if allowed:
-            if m_type == MoveType.MOVE:
-                self.turns_since_last_piece_taken += 1
-                self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
-                piece.move(direction)
-                self._board[piece.position[0]][piece.position[1]] = piece.colour
-                if piece.position[0] in [0, 7]:
-                    piece.king_piece()
-                self.add_state_to_game_history()
-                return True
-            if m_type == MoveType.JUMP:
-                self.turns_since_last_piece_taken = 0
-                new_square = self.adj_square(piece.position, direction)
-                self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
-                self._board[new_square[0]][new_square[1]] = Colour.BLANK
+        if not allowed:
+            return False
 
-                for piece_taken in self._pieces[piece.other_colour]:
-                    if piece_taken.position == new_square:
-                        piece_taken.remove_piece()
-                piece.move(direction)
-                piece.move(direction)
-                self._board[piece.position[0]][piece.position[1]] = piece.colour
-                # OK, bad abstraction here.  Should only be a king if in the last,
-                # This is first and last how the only way to move to the first row is if already a king
-                # making the same piece a king repeatedly has no effect. should be cleaner
-                if piece.position[0] in [0, 7]:
-                    piece.king_piece()
-                # TODO: Can a piece jump to the last line and immediately jump backwards???
-                if self.check_piece_can_take(piece):
-                    valid_move = False
-                    while not valid_move:
-                        move = self._ais[piece.colour].move(must_jump=True, ind_piece=piece)
-                        print(self._ais[piece.colour].id_val)
-                        print("BBBBBBB")
-                        print(move)
-                        print(move[MoveCheckers.PIECE].position)
-                        print([pi.position for pi in self._pieces[self._turn]])
-                        valid_move = self.check_move(move)
-                        print(valid_move)
-                    self.make_move(move)
-                self.add_state_to_game_history()
-                return True
-        return False
+        if m_type == MoveType.MOVE:
+            self.turns_since_last_piece_taken += 1
+            self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
+            piece.move(direction)
+            self._board[piece.position[0]][piece.position[1]] = piece.colour
+            if piece.position[0] in [0, 7]:
+                piece.king_piece()
+        elif m_type == MoveType.JUMP:
+            self.turns_since_last_piece_taken = 0
+            new_square = self.adj_square(piece.position, direction)
+            self._board[piece.position[0]][piece.position[1]] = Colour.BLANK
+            self._board[new_square[0]][new_square[1]] = Colour.BLANK
+
+            for piece_taken in self._pieces[piece.other_colour]:
+                if piece_taken.position == new_square:
+                    piece_taken.remove_piece()
+            piece.move(direction)
+            piece.move(direction)
+            self._board[piece.position[0]][piece.position[1]] = piece.colour
+            # OK, bad abstraction here.  Should only be a king if in the last,
+            # This is first and last how the only way to move to the first row is if already a king
+            # making the same piece a king repeatedly has no effect. should be cleaner
+            if piece.position[0] in [0, 7]:
+                piece.king_piece()
+            # TODO: Can a piece jump to the last line and immediately jump backwards???
+        else:
+            #raise NotImplementedError("Unknown move type {}".format(m_type))
+            print('Unknown move type {}'.format(m_type))
+            return False
+            
+        if m_type == MoveType.MOVE or not self.check_piece_can_take(piece):
+            self._turn_count += 1
+            self._next_player = Colour.WHITE if self._next_player == Colour.BLACK else Colour.BLACK
+            #valid_move = False
+                #while not valid_move:
+                #    move = self._ais[piece.colour].move(must_jump=True, ind_piece=piece)
+                #    print(self._ais[piece.colour].id_val)
+                #    print("BBBBBBB")
+                #    print(move)
+                #    print(move[MoveCheckers.PIECE].position)
+                #    print([pi.position for pi in self._pieces[self._turn]])
+                #    valid_move = self.check_move(move)
+                #    print(valid_move)
+            #self.make_move(move)
+        self.add_state_to_game_history()
+        return True
 
     def check_piece_can_take(self, piece: Piece):
         # Check 4 directions
@@ -270,6 +303,14 @@ class Checkers(Game):
 
     @staticmethod
     def adj_square(place: list, direc: Direction):
+        if direc == Direction.UP_RIGHT:
+            return [place[0]-1, place[1]+1]
+        elif direc == Direction.UP_LEFT:
+            return [place[0]-1, place[1]-1]
+        elif direc == Direction.DOWN_RIGHT:
+            return [place[0]+1, place[1]+1]
+        else:
+            return [place[0]+1, place[1]-1]
         return [sum(x) for x in zip(place, [-1, 1] if direc == Direction.UP_RIGHT else
                 [-1, -1] if direc == Direction.UP_LEFT else
                 [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
@@ -285,7 +326,7 @@ class Checkers(Game):
             return Result.DRAW
         if self.turns_since_last_piece_taken >= 100:
             return Result.DRAW
-        colour = self._turn
+        colour = self._next_player
         for piece in self._pieces[colour]:
             # The dead don't move
             if piece.is_dead:
@@ -302,33 +343,33 @@ class Checkers(Game):
                     return False
         return Result.WHITE if colour == Colour.BLACK else Result.BLACK
 
-    @staticmethod
-    def result_to_colour(result):
-        return Colour.BLACK if result == Result.BLACK else Colour.WHITE
 
-    @staticmethod
-    def other_colour(colour):
-        return Colour.BLACK if colour == Colour.WHITE else Colour.WHITE
-
+class CheckersRunner(GameRunner):
+    def __init__(self, Black_AIClass=None, White_AIClass=None):
+        super().__init__()
+        self._game = Checkers()
+        self._ais = {
+            Colour.BLACK: Black_AIClass(self._game, Colour.BLACK, Colour.WHITE),
+            Colour.WHITE: White_AIClass(self._game, Colour.WHITE, Colour.BLACK),
+        }
+        
     def start_game(self, verbose=False):
-        self._turn = Colour.BLACK
         while True:
-            self._turn_count += 1
             valid_move = False
             move = None
             while not valid_move:
-                move = self._ais[self._turn].move(must_jump=self.check_jump_required(Colour.BLACK), ind_piece=None)
-                valid_move, style = self.check_move(move)
-            self.make_move(move)
-            if verbose or self._turn_count > 1000:
+                next_ai = self._ais[self._game.next_player]
+                move = next_ai.move(must_jump=self._game.check_jump_required(Colour.BLACK), ind_piece=None) # TODO: arg
+                valid_move, style = self._game.check_move(move)
+            self._game.make_move(move)
+            if verbose or self._game._turn_count > 1000: # TODO: make property
                 print("")
                 print("")
                 print("XXXXX")
-                print(self._turn_count)
-                print(self.turns_since_last_piece_taken)
-                self.print_board()
-            self._turn = Colour.WHITE if self._turn == Colour.BLACK else Colour.BLACK
-            game_over = self.check_end_game()
+                print(self._game._turn_count)
+                print(self._game.turns_since_last_piece_taken)
+                self._game.print_board()
+            game_over = self._game.check_end_game()
             if game_over == Result.DRAW:
                 if verbose:
                     print("Draw")
@@ -338,7 +379,11 @@ class Checkers(Game):
             if game_over:
                 if verbose:
                     print(str(game_over).replace("Result.", "") + " Wins")
-                self._ais[self.result_to_colour(game_over)].win()
-                self._ais[self.other_colour(self.result_to_colour(game_over))].loss()
+                winning_colour = game_over.to_colour()
+                self._ais[winning_colour].win()
+                self._ais[winning_colour.other_colour()].loss()
                 return game_over
+
+    def game_history(self):
+        return self._game.game_history
 

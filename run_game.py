@@ -1,10 +1,11 @@
 import os, pickle
 
 
-from checkers import Checkers, Result
+from checkers import CheckersRunner, Result
 from xsandos import XsAndOs, NewellSimonAI
 from AIhub import *
 
+import cProfile
 
 game = "checkers"
 
@@ -29,17 +30,25 @@ if game == "xsandos":
         b = XsAndOs(RandomAI, StateLearnerAI)
         b.start_game(verbose=True)
 
+        
+def test_run():
+    b = CheckersRunner(Black_AIClass=AlphaBetaAI, White_AIClass=RandomAI)
+    win = b.start_game(verbose=True)
+
+cProfile.run('test_run()')
+
+        
 if game == "checkers":
     # checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
     # checkers.start_game(verbose=False)
     black_class = AlphaBetaAI
-    white_class = StateLearnerAI
+    white_class = RandomAI #StateLearnerAI
     print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
     wins = 0
     losses = 0
     draws = 0
 
-    save_game_history = False
+    save_game_history = True
 
     game_record_output_dir = 'games_dump'
     if not os.path.exists(game_record_output_dir):
@@ -47,7 +56,7 @@ if game == "checkers":
     game_histories = []
     game_wins = []
 
-    for i in range(1):
+    for i in range(100):
         if i % 10 == 0 and i > 0:
             print(
                 "Stats: {:5.4f}-{:5.4f}-{:5.4f} (wins-draws-losses) ... {}".format(wins / i, draws / i, losses / i, i))
@@ -59,7 +68,7 @@ if game == "checkers":
                     game_wins = []
                     game_histories = []
 
-        b = Checkers(Black_AIClass=black_class, White_AIClass=white_class)
+        b = CheckersRunner(Black_AIClass=black_class, White_AIClass=white_class)
         win = b.start_game(verbose=True)
         if win == Result.BLACK:
             wins += 1
@@ -71,5 +80,5 @@ if game == "checkers":
             draws += 1
             winner = 'DRAW'
         game_wins.append(winner)
-        game_histories.append(b.game_history)
+        game_histories.append(b.game_history())
 
