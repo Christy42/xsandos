@@ -122,7 +122,6 @@ class AlphaBetaAI:
         self.id_val = 1
 
     def move(self, **kwargs):
-        print("alpha beta move")
         best_move = None
         best_value = -inf
         pos_moves = self._game.possible_moves(self._side)

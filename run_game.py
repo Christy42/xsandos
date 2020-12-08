@@ -7,7 +7,7 @@ from AIhub import *
 
 import cProfile
 
-game = "checkers"
+game = "xsandosb"
 
 if game == "xsandos":
     print('X - NewellSimonAI; O - StateLearnerAI')
@@ -33,7 +33,7 @@ if game == "xsandos":
         
 def test_run():
     b = CheckersRunner(Black_AIClass=AlphaBetaAI, White_AIClass=RandomAI)
-    win = b.start_game(verbose=True)
+    win = b.start_game(verbose=False)
 
 cProfile.run('test_run()')
 

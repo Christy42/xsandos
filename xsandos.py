@@ -1,5 +1,6 @@
 import numpy as np
 from enum import Enum
+from copy import deepcopy
 
 from game import Game
 
@@ -24,13 +25,19 @@ class Square(Enum):
 
 
 class XsAndOs(Game):
-    def __init__(self, X_AIClass, O_AIClass):
+    # TODO: Format with a runner like checkers for consistency
+    def __init__(self, X_AIClass=None, O_AIClass=None):
         super().__init__()
-        self._ais = {Square.Xs: X_AIClass(self, Square.Xs, Square.Os), Square.Os: O_AIClass(self, Square.Os, Square.Xs)}
+        if X_AIClass:
+            print("V")
+            self._ais = {Square.Xs: X_AIClass(self, Square.Xs, Square.Os),
+                         Square.Os: O_AIClass(self, Square.Os, Square.Xs)}
+        else:
+            self._ais = {}
         self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
-        self._turn = Square.Xs
+        self._next_player = Square.Xs
         self.game_history = []
         self.add_state_to_game_history()
 
@@ -51,6 +58,16 @@ class XsAndOs(Game):
     def check_move(self, move):
         return self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] == Square.BLANK
 
+    def copy(self, include_history=True):
+        game_copy = XsAndOs()
+        for i in range(len(game_copy._board)):
+            game_copy._board[i] = self._board[i][:]
+        game_copy._next_player = self._next_player
+        game_copy.game_history = []
+        if include_history:
+            game_copy.game_history = deepcopy(self.game_history)
+        return game_copy
+
     # TODO: If sides get normalised these could be in the super class
     @staticmethod
     def other_side(side):
@@ -69,14 +86,14 @@ class XsAndOs(Game):
             valid_move = False
             move = None
             while not valid_move:
-                move = self._ais[self._turn].move()
+                move = self._ais[self._next_player].move()
                 valid_move = True if self.check_move(move) else False
                 if not valid_move:
                     self.print_board()
                     assert 0
 
             self.make_move(move)
-            self._turn = self.other_side(self._turn)
+            self._next_player = self.other_side(self._next_player)
             game_over = self.check_end_game()
             if game_over:
                 print(str(game_over).replace("Squares.", "").replace("s", "") + " Win")
@@ -97,7 +114,7 @@ class XsAndOs(Game):
         for i in range(len(self._board)):
             for j in range(len(self._board)):
                 if self._board[i][j] == Square.BLANK:
-                    possible_moves.append({MoveXs.SIDE: self._turn, MoveXs.ROW: i, MoveXs.COLUMN: j})
+                    possible_moves.append({MoveXs.SIDE: self._next_player, MoveXs.ROW: i, MoveXs.COLUMN: j})
         return possible_moves
 
     def print_board(self):
@@ -183,15 +200,15 @@ class NewellSimonAI:
         '''Find and play/block any available winning moves.'''
         target = (-2 if block else 2)
         for i in range(3):
-            if self._board[i,:].sum() == target:
-                return i, np.where(self._board[i,:]==0)[0][0]
-            if self._board[:,i].sum() == target:
-                return np.where(self._board[:,i]==0)[0][0], i
+            if self._board[i, :].sum() == target:
+                return i, np.where(self._board[i, :] == 0)[0][0]
+            if self._board[:, i].sum() == target:
+                return np.where(self._board[:, i] == 0)[0][0], i
         if np.diag(self._board).sum() == target:
-            i = np.where(np.diag(self._board)==0)[0][0]
-            return i,i
+            i = np.where(np.diag(self._board) == 0)[0][0]
+            return i, i
         if np.diag(np.fliplr(self._board)).sum() == target:
-            i = np.where(np.diag(np.fliplr(self._board))==0)[0][0]
+            i = np.where(np.diag(np.fliplr(self._board)) == 0)[0][0]
             return i, 2-i
 
     def fork(self):
@@ -199,11 +216,11 @@ class NewellSimonAI:
         for i in range(3):
             for j in range(3):
                 possible_board = self._board.copy()
-                if possible_board[i,j] != 0:
+                if possible_board[i, j] != 0:
                     continue
-                possible_board[i,j] = 1
+                possible_board[i, j] = 1
                 if self._has_fork(possible_board, block=False):
-                    return i,j
+                    return i, j
 
     def block_fork(self):
         '''Look for and block opponent forks.'''
@@ -211,11 +228,11 @@ class NewellSimonAI:
         for i in range(3):
             for j in range(3):
                 possible_board = self._board.copy()
-                if possible_board[i,j] != 0:
+                if possible_board[i, j] != 0:
                     continue
-                possible_board[i,j] = -1
+                possible_board[i, j] = -1
                 if self._has_fork(possible_board, block=True):
-                    forks.append((i,j))
+                    forks.append((i, j))
         if len(forks) == 1:
             return forks[0]
         if len(forks) == 0:
@@ -229,37 +246,37 @@ class NewellSimonAI:
             possible_board[fork] = 10000
         for i in range(3):
             for j in range(3):
-                if possible_board[i,j] != 0:
+                if possible_board[i, j] != 0:
                     continue
-                possible_board[i,j] = 1
-                if possible_board[:,i].sum() == 2 or possible_board[i,:].sum() == 2:
-                    return i,j
+                possible_board[i, j] = 1
+                if possible_board[:, i].sum() == 2 or possible_board[i, :].sum() == 2:
+                    return i, j
                 if np.diag(possible_board).sum() == 2 or np.diag(np.fliplr(possible_board)).sum() == 2:
-                    return i,j
-                possible_board[i,j] = 0
+                    return i, j
+                possible_board[i, j] = 0
 
     def empty_square(self):
         '''No wins or forks to play/block, so play an advantageous square.'''
         # First the middle
-        if self._board[1,1] == 0:
-            return 1,1
+        if self._board[1, 1] == 0:
+            return 1, 1
         # Next opposite corners
-        for corner in ((0,0), (0,2), (2,0), (2,2)):
+        for corner in ((0, 0), (0, 2), (2, 0), (2, 2)):
             if self._board[corner] == -1:
                 opposite = (2-corner[0], 2-corner[1])
                 if self._board[opposite] == 0:
                     return opposite
         # Now any available corner
-        for corner in ((0,0), (0,2), (2,0), (2,2)):
+        for corner in ((0, 0), (0, 2), (2, 0), (2, 2)):
             if self._board[corner] == 0:
                 return corner
         # Finally any available square:
-        for square in ((1,0), (1,2), (0,1), (2,1)):
+        for square in ((1, 0), (1, 2), (0, 1), (2, 1)):
             if self._board[square] == 0:
                 return square
 
     def _has_fork(self, board, block: bool):
-        '''A fork is any situation where there are >= 2 winning oportunities. So count the available wins.'''
+        '''A fork is any situation where there are >= 2 winning opportunities. So count the available wins.'''
         target = (-2 if block else 2)
         count = int(np.diag(board).sum() == target) + int(np.diag(np.fliplr(board)).sum() == target)
         for i in range(3):
