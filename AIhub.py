@@ -125,13 +125,13 @@ class AlphaBetaAI:
         print("alpha beta move")
         best_move = None
         best_value = -inf
-        pos_moves = self._game.possible_moves(self._side, **kwargs)
+        pos_moves = self._game.possible_moves(self._side)
 
         assert len(pos_moves) > 0
 
         for move in pos_moves:
             # Could depth be optimised by if we have to jump or use a specific piece as there are less options
-            temp_game = self._game.copy(include_history=False) #deepcopy(self._game)
+            temp_game = self._game.copy(include_history=False)  # deepcopy(self._game)
             temp_game.make_move(deepcopy(move))
             new_value = self.alphabeta(temp_game, 3, -inf, inf, temp_game.next_player == self._side, **kwargs)
             if new_value >= best_value:
@@ -153,24 +153,24 @@ class AlphaBetaAI:
 
         if maximizing_player:
             value = -inf
-            for child in node.possible_moves(side=self._side, **kwargs):  # need child to be something sensible here
-                temp_game = node.copy(include_history=False) #deepcopy(node)
+            for child in node.possible_moves(side=self._side):  # need child to be something sensible here
+                temp_game = node.copy(include_history=False)  # deepcopy(node)
                 temp_game.make_move(deepcopy(child))
                 value = max(value, self.alphabeta(temp_game, depth - 1, alpha, beta, temp_game.next_player == self._side))
                 alpha = max(alpha, value)
                 if alpha >= beta:
-                    return value #+ random.random()
-            return value #+ random.random()
+                    return value  # + random.random()
+            return value  # + random.random()
         else:
             value = +inf
-            for child in node.possible_moves(side=self._other_side, **kwargs):
-                temp_game = node.copy(include_history=False) #deepcopy(node)
+            for child in node.possible_moves(side=self._other_side):
+                temp_game = node.copy(include_history=False)  # deepcopy(node)
                 temp_game.make_move(deepcopy(child))
                 value = min(value, self.alphabeta(temp_game, depth - 1, alpha, beta, temp_game.next_player == self._side))
                 beta = min(beta, value)
                 if beta <= alpha:
-                    return value #+ random.random()
-            return value #+ random.random()
+                    return value  # + random.random()
+            return value  # + random.random()
 
     def win(self):
         pass

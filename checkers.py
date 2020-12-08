@@ -40,6 +40,9 @@ class Colour(Enum):
 
     def other_colour(self):
         return Colour.BLACK if self.value == Colour.WHITE else Colour.WHITE
+
+    def to_result(self):
+        return Result.BLACK if self.value == Colour.BLACK else Result.WHITE
     
 
 class Direction(Enum):
@@ -141,6 +144,7 @@ class Checkers(Game):
             game_copy._board[i] = self._board[i][:]
         game_copy._next_player = self._next_player
         game_copy._turn_count = self._turn_count
+        game_copy._piece_to_move = self._piece_to_move
         game_copy.turns_since_last_piece_taken = self.turns_since_last_piece_taken
 
         game_copy._pieces = {}
@@ -152,11 +156,11 @@ class Checkers(Game):
             game_copy.game_history = deepcopy(self.game_history)
         return game_copy
             
-    def possible_moves(self, side: Colour, must_jump=False, ind_piece=None):
+    def possible_moves(self, side: Colour):
         possible_moves = []
         for piece in self._pieces[side]:
-            if ind_piece:
-                if ind_piece.position != piece.position:
+            if self._piece_to_move:
+                if self._piece_to_move.position != piece.position:
                     continue
             for direction in Direction:
                 if self.check_move({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})[0]:
@@ -167,11 +171,8 @@ class Checkers(Game):
         board_list = []
         for i in range(8):
             for j in range(8):
-                position_char = ' '
-                if self._board[i][j] == Colour.BLACK:
-                    position_char = 'B'
-                elif self._board[i][j] == Colour.WHITE:
-                    position_char = 'W'
+                position_char = 'B' if self._board[i][j] == Colour.BLACK else \
+                    'W' if self._board[i][j] == Colour.WHITE else ' '
                 board_list.append(position_char)
         board_string = ''.join(board_list)
         if self.game_history and self.game_history[-1] == board_string:
@@ -321,14 +322,8 @@ class Checkers(Game):
 
     @staticmethod
     def adj_square(place: list, direc: Direction):
-        if direc == Direction.UP_RIGHT:
-            return [place[0]-1, place[1]+1]
-        elif direc == Direction.UP_LEFT:
-            return [place[0]-1, place[1]-1]
-        elif direc == Direction.DOWN_RIGHT:
-            return [place[0]+1, place[1]+1]
-        else:
-            return [place[0]+1, place[1]-1]
+        return [place[0] + (1 if direc in [Direction.DOWN_RIGHT, Direction.DOWN_LEFT] else -1),
+                place[1] + (1 if direc in [Direction.UP_RIGHT, Direction.DOWN_RIGHT] else -1)]
 
     def check_end_game(self):
         if self._turn_count > 100:
@@ -356,7 +351,7 @@ class Checkers(Game):
                     continue
                 if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
                     return False
-        return Result.WHITE if colour == Colour.BLACK else Result.BLACK
+        return colour.to_result()
 
 
 class CheckersRunner(GameRunner):
