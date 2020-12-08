@@ -2,38 +2,39 @@ import os, pickle
 
 
 from checkers import CheckersRunner, Result
-from xsandos import XsAndOs, NewellSimonAI
+from xsandos import XsAndOsRunner, NewellSimonAI
 from AIhub import *
 
 import cProfile
 
-game = "xsandosb"
+game = "xsandos"
 
 if game == "xsandos":
     print('X - NewellSimonAI; O - StateLearnerAI')
     for i in range(50):
-        b = XsAndOs(NewellSimonAI, StateLearnerAI)
+        b = XsAndOsRunner(NewellSimonAI, StateLearnerAI)
         b.start_game(verbose=False)
 
     print('\n\nX - StateLearnerAI; O - NewellSimonAI')
     for i in range(30):
-        b = XsAndOs(StateLearnerAI, NewellSimonAI)
+        b = XsAndOsRunner(StateLearnerAI, NewellSimonAI)
         b.start_game(verbose=False)
 
     print('\n\nX - StateLearnerAI; O - StateLearnerAI')
     for i in range(1):
-        b = XsAndOs(StateLearnerAI, StateLearnerAI)
+        b = XsAndOsRunner(StateLearnerAI, StateLearnerAI)
         b.start_game(verbose=True)
 
     print('\n\nX - RandomAI; O - StateLearnerAI')
     for i in range(1):
-        b = XsAndOs(RandomAI, StateLearnerAI)
+        b = XsAndOsRunner(RandomAI, StateLearnerAI)
         b.start_game(verbose=True)
 
         
 def test_run():
     b = CheckersRunner(Black_AIClass=AlphaBetaAI, White_AIClass=RandomAI)
     win = b.start_game(verbose=False)
+
 
 cProfile.run('test_run()')
 

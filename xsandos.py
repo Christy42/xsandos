@@ -2,7 +2,7 @@ import numpy as np
 from enum import Enum
 from copy import deepcopy
 
-from game import Game
+from game import Game, GameRunner
 
 
 class Result(Enum):
@@ -23,17 +23,18 @@ class Square(Enum):
     Xs = 2
     Os = 3
 
+    @property
+    def other_side(self):
+        return Square.Xs if self.value == Square.Os else Square.Os
+
+    @property
+    def side_to_result(self):
+        return Result.Xs if self.value == Square.Xs else Square.Os
+
 
 class XsAndOs(Game):
-    # TODO: Format with a runner like checkers for consistency
-    def __init__(self, X_AIClass=None, O_AIClass=None):
+    def __init__(self):
         super().__init__()
-        if X_AIClass:
-            print("V")
-            self._ais = {Square.Xs: X_AIClass(self, Square.Xs, Square.Os),
-                         Square.Os: O_AIClass(self, Square.Os, Square.Xs)}
-        else:
-            self._ais = {}
         self._board = [[Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK],
                        [Square.BLANK, Square.BLANK, Square.BLANK]]
@@ -54,6 +55,7 @@ class XsAndOs(Game):
 
     def make_move(self, move):
         self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] = move[MoveXs.SIDE]
+        self._next_player = self.next_player.other_side
 
     def check_move(self, move):
         return self._board[move[MoveXs.ROW]][move[MoveXs.COLUMN]] == Square.BLANK
@@ -76,38 +78,6 @@ class XsAndOs(Game):
     @staticmethod
     def side_to_result(side):
         return Result.Os if side == Square.Os else Result.Xs
-
-    def start_game(self, verbose=False):
-        if verbose:
-            print('New game')
-        for i in range(9):
-            if verbose:
-                self.print_board()
-            valid_move = False
-            move = None
-            while not valid_move:
-                move = self._ais[self._next_player].move()
-                valid_move = True if self.check_move(move) else False
-                if not valid_move:
-                    self.print_board()
-                    assert 0
-
-            self.make_move(move)
-            self._next_player = self.other_side(self._next_player)
-            game_over = self.check_end_game()
-            if game_over:
-                print(str(game_over).replace("Squares.", "").replace("s", "") + " Win")
-                self._ais[game_over].win()
-                self._ais[self.other_side(game_over)].loss()
-                if verbose:
-                    self.print_board()
-                return self.side_to_result(game_over)
-        print("Draw")
-        self._ais[Square.Xs].draw()
-        self._ais[Square.Os].draw()
-        if verbose:
-            self.print_board()
-        return Result.DRAW
 
     def possible_moves(self, side: Square, ind_piece=None):
         possible_moves = []
@@ -143,6 +113,51 @@ class XsAndOs(Game):
                 board_list.append(position_char)
         board_string = ''.join(board_list)
         self.game_history.append(board_string)
+
+
+class XsAndOsRunner(GameRunner):
+    def __init__(self, X_AIClass=None, O_AIClass=None):
+        super().__init__()
+        self._game = XsAndOs()
+        self._ais = {
+            Square.Xs: X_AIClass(self._game, Square.Xs, Square.Os),
+            Square.Os: O_AIClass(self._game, Square.Os, Square.Xs),
+        }
+
+    def start_game(self, verbose=False):
+        if verbose:
+            print('New game')
+        for i in range(9):
+            if verbose:
+                self._game.print_board()
+            valid_move = False
+            move = None
+            while not valid_move:
+                print(self._game.next_player)
+                move = self._ais[self._game.next_player].move()
+                valid_move = True if self._game.check_move(move) else False
+                if not valid_move:
+                    self._game.print_board()
+                    assert 0
+            self._game.make_move(move)
+
+            game_over = self._game.check_end_game()
+            if game_over:
+                print(str(game_over).replace("Squares.", "").replace("s", "") + " Win")
+                self._ais[game_over].win()
+                self._ais[game_over.other_side].loss()
+                if verbose:
+                    self._game.print_board()
+                return game_over.side_to_result
+        print("Draw")
+        self._ais[Square.Xs].draw()
+        self._ais[Square.Os].draw()
+        if verbose:
+            self._game.print_board()
+        return Result.DRAW
+
+    def game_history(self):
+        return self._game.game_history
 
 
 class BruteForceAI:

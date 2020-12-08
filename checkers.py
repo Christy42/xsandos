@@ -24,6 +24,7 @@ class Result(Enum):
     BLACK = 2
     DRAW = 3
 
+    @property
     def to_colour(self):
         return Colour.BLACK if self.value == Result.BLACK else Colour.WHITE
 
@@ -38,9 +39,11 @@ class Colour(Enum):
     WHITE = 2
     BLACK = 3
 
+    @property
     def other_colour(self):
         return Colour.BLACK if self.value == Colour.WHITE else Colour.WHITE
 
+    @property
     def to_result(self):
         return Result.BLACK if self.value == Colour.BLACK else Result.WHITE
     
@@ -351,7 +354,7 @@ class Checkers(Game):
                     continue
                 if self._board[new_square[0]][new_square[1]] == Colour.BLANK:
                     return False
-        return colour.to_result()
+        return colour.to_result
 
 
 class CheckersRunner(GameRunner):
@@ -373,7 +376,7 @@ class CheckersRunner(GameRunner):
                                     ind_piece=self._game.piece_to_move)  # TODO: arg
                 valid_move, style = self._game.check_move(move)
             self._game.make_move(move)
-            if verbose or self._game.turn_count > 1000:  # TODO: make property
+            if verbose or self._game.turn_count > 1000:
                 print("")
                 print("")
                 print("X X X X X")
@@ -390,9 +393,9 @@ class CheckersRunner(GameRunner):
             if game_over:
                 if verbose:
                     print(str(game_over).replace("Result.", "") + " Wins")
-                winning_colour = game_over.to_colour()
+                winning_colour = game_over.to_colour
                 self._ais[winning_colour].win()
-                self._ais[winning_colour.other_colour()].loss()
+                self._ais[winning_colour.other_colour].loss()
                 return game_over
 
     def game_history(self):
