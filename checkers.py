@@ -1,5 +1,6 @@
 from game import Game, GameRunner
 from enum import Enum
+from copy import deepcopy
 
 
 def colored(r, g, b, text):
@@ -25,6 +26,7 @@ class Result(Enum):
 
     def to_colour(self):
         return Colour.BLACK if self.value == Result.BLACK else Colour.WHITE
+
 
 class MoveType(Enum):
     MOVE = 1
@@ -114,6 +116,7 @@ class Checkers(Game):
                            [Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK, Colour.BLACK, Colour.BLANK]]
         self._turn_count = 0
         self.turns_since_last_piece_taken = 0
+        self._piece_to_move = None
 
         # TODO: Can we relate this to the board up above
         self._pieces = {Colour.WHITE: [], Colour.BLACK: []}
@@ -123,6 +126,14 @@ class Checkers(Game):
                     self._pieces[self._board[i][j]].append(Piece(self._board[i][j], [i, j]))
         self.game_history = []
         self.add_state_to_game_history()
+
+    @property
+    def turn_count(self):
+        return self._turn_count
+
+    @property
+    def piece_to_move(self):
+        return self._piece_to_move
 
     def copy(self, include_history=True):
         game_copy = Checkers()
@@ -191,6 +202,10 @@ class Checkers(Game):
         # print(move)
         piece = move[MoveCheckers.PIECE]
         direction = move[MoveCheckers.DIRECTION]
+        # Check if double jump required
+        if self._piece_to_move:
+            if self._piece_to_move.position != piece.position:
+                return False, None
         # Piece already taken
         if piece.position == [-1, -1]:
             return False, None
@@ -258,24 +273,27 @@ class Checkers(Game):
                 piece.king_piece()
             # TODO: Can a piece jump to the last line and immediately jump backwards???
         else:
-            #raise NotImplementedError("Unknown move type {}".format(m_type))
+            # raise NotImplementedError("Unknown move type {}".format(m_type))
             print('Unknown move type {}'.format(m_type))
             return False
             
         if m_type == MoveType.MOVE or not self.check_piece_can_take(piece):
             self._turn_count += 1
             self._next_player = Colour.WHITE if self._next_player == Colour.BLACK else Colour.BLACK
-            #valid_move = False
-                #while not valid_move:
-                #    move = self._ais[piece.colour].move(must_jump=True, ind_piece=piece)
-                #    print(self._ais[piece.colour].id_val)
-                #    print("BBBBBBB")
-                #    print(move)
-                #    print(move[MoveCheckers.PIECE].position)
-                #    print([pi.position for pi in self._pieces[self._turn]])
-                #    valid_move = self.check_move(move)
-                #    print(valid_move)
-            #self.make_move(move)
+            self._piece_to_move = None
+            # valid_move = False
+            # while not valid_move:
+            #    move = self._ais[piece.colour].move(must_jump=True, ind_piece=piece)
+            #    print(self._ais[piece.colour].id_val)
+            #    print("")
+            #    print(move)
+            #    print(move[MoveCheckers.PIECE].position)
+            #    print([pi.position for pi in self._pieces[self._turn]])
+            #    valid_move = self.check_move(move)
+            #    print(valid_move)
+            # self.make_move(move)
+        else:
+            self._piece_to_move = piece
         self.add_state_to_game_history()
         return True
 
@@ -311,9 +329,6 @@ class Checkers(Game):
             return [place[0]+1, place[1]+1]
         else:
             return [place[0]+1, place[1]-1]
-        return [sum(x) for x in zip(place, [-1, 1] if direc == Direction.UP_RIGHT else
-                [-1, -1] if direc == Direction.UP_LEFT else
-                [1, 1] if direc == Direction.DOWN_RIGHT else [1, -1])]
 
     def check_end_game(self):
         if self._turn_count > 100:
@@ -359,14 +374,15 @@ class CheckersRunner(GameRunner):
             move = None
             while not valid_move:
                 next_ai = self._ais[self._game.next_player]
-                move = next_ai.move(must_jump=self._game.check_jump_required(Colour.BLACK), ind_piece=None) # TODO: arg
+                move = next_ai.move(must_jump=self._game.check_jump_required(Colour.BLACK),
+                                    ind_piece=self._game.piece_to_move)  # TODO: arg
                 valid_move, style = self._game.check_move(move)
             self._game.make_move(move)
-            if verbose or self._game._turn_count > 1000: # TODO: make property
+            if verbose or self._game.turn_count > 1000:  # TODO: make property
                 print("")
                 print("")
-                print("XXXXX")
-                print(self._game._turn_count)
+                print("X X X X X")
+                print(self._game.turn_count)
                 print(self._game.turns_since_last_piece_taken)
                 self._game.print_board()
             game_over = self._game.check_end_game()
@@ -386,4 +402,3 @@ class CheckersRunner(GameRunner):
 
     def game_history(self):
         return self._game.game_history
-
