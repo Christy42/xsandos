@@ -132,23 +132,27 @@ class AlphaBetaAI:
             # Could depth be optimised by if we have to jump or use a specific piece as there are less options
             temp_game = self._game.copy(include_history=False)  # deepcopy(self._game)
             temp_game.make_move(deepcopy(move))
-            new_value = self.alphabeta(temp_game, 3, -inf, inf, temp_game.next_player == self._side, **kwargs)
+            new_value = self.alphabeta(temp_game, 3, -inf, inf, temp_game.next_player == self._side, **kwargs) + \
+                            random.random()
             if new_value >= best_value:
                 best_move = move
                 best_value = new_value
         assert best_move is not None
         return best_move
 
+    def value_func(self, node):
+        total = 0
+        # TODO: Have this sub-function as an input into the AI so it can be more general
+        # Should probably value a 0 from one side far more heavily
+        for piece in node.pieces[self._side]:
+            total += 0 if piece.is_dead else 5 if piece.king else 3
+        for piece in node.pieces[self._other_side]:
+            total -= 0 if piece.is_dead else 5 if piece.king else 3
+        return total  # random values are try and ensure that ties get picked differently
+
     def alphabeta(self, node: Game, depth: int, alpha: int, beta: int, maximizing_player: bool, **kwargs):
         if depth == 0 or node.check_end_game():
-            total = 0
-            # TODO: Have this sub-function as an input into the AI so it can be more general
-            # Should probably value a 0 from one side far more heavily
-            for piece in node.pieces[self._side]:
-                total += 0 if piece.is_dead else 5 if piece.king else 3
-            for piece in node.pieces[self._other_side]:
-                total -= 0 if piece.is_dead else 5 if piece.king else 3
-            return total + random.random()  # random values are try and ensure that ties get picked differently
+            return self.value_func(node)
 
         if maximizing_player:
             value = -inf
@@ -179,3 +183,26 @@ class AlphaBetaAI:
 
     def loss(self):
         pass
+
+
+class AlphaBeta2(AlphaBetaAI):
+    def __init__(self, game, side, other_side):
+        super().__init__(game, side, other_side)
+
+    def value_func(self, node):
+        total = 0
+        # TODO: Have this sub-function as an input into the AI so it can be more general
+        # Should probably value a 0 from one side far more heavily
+        check = 0
+        for piece in node.pieces[self._side]:
+            check += 0 if piece.is_dead else 5 if piece.king else 3
+        total += check
+        if check == 0:
+            total -= 200
+        check = 0
+        for piece in node.pieces[self._other_side]:
+            check -= 0 if piece.is_dead else 5 if piece.king else 3
+        total += check
+        if check == 0:
+            total += 200
+        return total

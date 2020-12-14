@@ -1,4 +1,4 @@
-import os, pickle
+import os, pickle, time
 
 
 from checkers import CheckersRunner, Result
@@ -7,7 +7,7 @@ from AIhub import *
 
 import cProfile
 
-game = "xsandos"
+game = "checkers"
 
 if game == "xsandos":
     print('X - NewellSimonAI; O - StateLearnerAI')
@@ -43,7 +43,7 @@ if game == "checkers":
     # checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
     # checkers.start_game(verbose=False)
     black_class = AlphaBetaAI
-    white_class = RandomAI #StateLearnerAI
+    white_class = AlphaBeta2 #StateLearnerAI
     print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
     wins = 0
     losses = 0
@@ -56,7 +56,7 @@ if game == "checkers":
         os.makedirs(game_record_output_dir)
     game_histories = []
     game_wins = []
-
+    time_start = time.time()
     for i in range(100):
         if i % 10 == 0 and i > 0:
             print(
@@ -70,7 +70,7 @@ if game == "checkers":
                     game_histories = []
 
         b = CheckersRunner(Black_AIClass=black_class, White_AIClass=white_class)
-        win = b.start_game(verbose=True)
+        win = b.start_game(verbose=False)
         if win == Result.BLACK:
             wins += 1
             winner = 'BLACK'
@@ -83,3 +83,7 @@ if game == "checkers":
         game_wins.append(winner)
         game_histories.append(b.game_history())
 
+    print(wins)
+    print(draws)
+    print(losses)
+    print(time.time() - time_start)
