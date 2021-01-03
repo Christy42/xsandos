@@ -172,11 +172,18 @@ class Checkers(Game):
 
     def add_state_to_game_history(self):
         board_list = []
+        check_list = {}
+        for piece in self._pieces[Colour.WHITE] + self._pieces[Colour.BLACK]:
+            if not piece.is_dead:
+                check_list[str(piece.position[0]) + str(piece.position[1])] = "B" if piece.colour == Colour.BLACK and piece.king \
+                    else "b" if piece.colour == Colour.BLACK else "W" if piece.king else "w"
         for i in range(8):
             for j in range(8):
-                position_char = 'B' if self._board[i][j] == Colour.BLACK else \
-                    'W' if self._board[i][j] == Colour.WHITE else ' '
+                position_char = check_list.get(str(i) + str(j), ' ')
+                # position_char = 'B' if self._board[i][j] == Colour.BLACK else \
+                #     'w' if self._board[i][j] == Colour.WHITE else ' '
                 board_list.append(position_char)
+
         board_string = ''.join(board_list)
         if self.game_history and self.game_history[-1] == board_string:
             # In the case of multiple jumps, we end up with multiple copies
