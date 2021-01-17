@@ -170,7 +170,7 @@ class Checkers(Game):
                     possible_moves.append({MoveCheckers.PIECE: piece, MoveCheckers.DIRECTION: direction})
         return possible_moves
 
-    def add_state_to_game_history(self):
+    def as_string(self):
         board_list = []
         check_list = {}
         for piece in self._pieces[Colour.WHITE] + self._pieces[Colour.BLACK]:
@@ -185,6 +185,10 @@ class Checkers(Game):
                 board_list.append(position_char)
 
         board_string = ''.join(board_list)
+        return board_string
+    
+    def add_state_to_game_history(self):
+        board_string = self.as_string()
         if self.game_history and self.game_history[-1] == board_string:
             # In the case of multiple jumps, we end up with multiple copies
             # of the board. Prune these here.

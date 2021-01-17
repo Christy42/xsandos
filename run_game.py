@@ -36,14 +36,14 @@ def test_run():
     win = b.start_game(verbose=False)
 
 
-cProfile.run('test_run()')
+#cProfile.run('test_run()')
 
         
 if game == "checkers":
     # checkers = Checkers(Black_AIClass=RandomAI, White_AIClass=StateLearnerAI)
     # checkers.start_game(verbose=False)
-    black_class = AlphaBetaAI
-    white_class = AlphaBeta2  # StateLearnerAI
+    black_class = RandomAI
+    white_class = NeuralNetMoveScoreAI # AlphaBeta2 
     print('\n\nBlack: {}; White: {}'.format(black_class.__name__, white_class.__name__))
     wins = 0
     losses = 0
@@ -57,7 +57,7 @@ if game == "checkers":
     game_histories = []
     game_wins = []
     time_start = time.time()
-    for i in range(100):
+    for i in range(1000):
         if i % 10 == 0 and i > 0:
             print(
                 "Stats: {:5.4f}-{:5.4f}-{:5.4f} (wins-draws-losses) ... {}".format(wins / i, draws / i, losses / i, i))
@@ -68,6 +68,12 @@ if game == "checkers":
                     pickle.dump((game_wins, game_histories), f)
                     game_wins = []
                     game_histories = []
+
+                # HACK: temporary hack to save data for training
+                if white_class == AlphaBeta2:
+                    alphabeta_fname = os.path.join(game_record_output_dir, 'dump_ab.pkl')
+                    with open(alphabeta_fname, 'wb') as f:
+                        pickle.dump(board_to_value, f)
 
         b = CheckersRunner(Black_AIClass=black_class, White_AIClass=white_class)
         win = b.start_game(verbose=False)
