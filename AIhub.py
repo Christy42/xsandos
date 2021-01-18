@@ -4,6 +4,16 @@ from copy import deepcopy
 from checkers import Colour
 from game import Game
 
+import pickle
+import numpy as np
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasRegressor
+from sklearn.model_selection import cross_val_score, KFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from keras.models import load_model
+
 
 class RandomAI:
     def __init__(self, game, side, other_side):
@@ -112,6 +122,117 @@ class ProjectedStateLearnerAI(StateLearnerAI):
                     their_piece_count += 1
         return (my_piece_count - their_piece_count,)
 
+def build_model():
+    model = Sequential()
+    model.add(Dense(8*4, input_dim=8*4, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(8, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(6, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(1, kernel_initializer='normal'))
+    model.compile(loss='mean_squared_error', optimizer='adam')
+    return model
+
+# HACK: we only want to load this model once for performance reasons, so make it global.
+# will tidy later...
+model_pipeline = None
+class NeuralNetMoveScoreAI:
+    def __init__(self, game, side, other_side):
+        self._game = game
+        self._side = side
+        self._other_side = other_side
+        self._temp_game = game
+        global model_pipeline
+        if model_pipeline is None:
+            model_pipeline = self.train_model(1, 'games_dump/dump_ab.pkl', 1)
+            model_pipeline.named_steps['mlp'].model = load_model('mlp.h5')
+        self.pipeline = model_pipeline
+
+    def string_to_array(self, board_string):
+        board_array = np.zeros((8, 8), dtype='int')
+        for i in range(8):
+            for j in range(8):
+                val = 0
+                if board_string[i*8+j] == 'W':
+                    val = 2
+                elif board_string[i*8+j] == 'B':
+                    val = -2
+                elif board_string[i*8+j] == 'w':
+                    val = 1
+                elif board_string[i*8+j] == 'b':
+                    val = -1
+                board_array[i, j] = val
+        return board_array
+
+    def array_to_list(self, board_array):
+        board_list = np.zeros(4*8, dtype='int')
+        pos = 0
+        for i in range(8):
+            for j in range(8):
+                # Only encode squares that may contain pieces:
+                if (i+j) % 2 == 0:
+                    continue
+                board_list[pos] = board_array[i, j]
+                pos += 1
+        return board_list
+        
+    def train_model(self, train_set_size, data_fname, epochs):        
+        alphabeta_inputs = []
+        alphabeta_outputs = []
+        with open(data_fname, 'rb') as f:
+            alphabeta_data = pickle.load(f)
+            for b,val in alphabeta_data.items():
+                board_arr = self.string_to_array(b)
+                alphabeta_inputs.append(self.array_to_list(board_arr))
+                alphabeta_outputs.append(val)
+
+        # Train model:
+        estimators = list()
+        estimators.append(('standardize', StandardScaler()))
+        estimators.append(('mlp', KerasRegressor(build_fn=build_model, epochs=epochs, batch_size=5, verbose=0)))
+        
+        pipeline = Pipeline(estimators)
+        kfold = KFold(n_splits=10)
+        return pipeline.fit(alphabeta_inputs[:train_set_size], np.array(alphabeta_outputs[:train_set_size]))
+
+    def get_board_value_from_model(self, temp_game_string):
+        temp_game_array = self.string_to_array(temp_game_string)
+        temp_game_list = self.array_to_list(temp_game_array)
+        prediction = self.pipeline.predict([temp_game_list])
+        return prediction
+        
+    def move(self, **kwargs):
+        best_move = None
+        best_value = -inf
+        pos_moves = self._game.possible_moves(self._side)
+
+        assert len(pos_moves) > 0
+
+        global board_to_value
+        for move in pos_moves:
+            # Could depth be optimised by if we have to jump or use a specific piece as there are less options
+            temp_game = self._game.copy(include_history=False)  # deepcopy(self._game)
+            temp_game.make_move(deepcopy(move))
+            temp_game_string = temp_game.as_string()
+            new_value = self.get_board_value_from_model(temp_game_string)
+            if new_value >= best_value:
+                best_move = move
+                best_value = new_value
+            board_to_value[temp_game_string] = new_value
+        assert best_move is not None
+        return best_move
+
+    def win(self):
+        pass
+
+    def draw(self):
+        pass
+
+    def loss(self):
+        pass
+
+
+        
+# HACK: save moves for training... will remove this
+board_to_value = {}
 
 class AlphaBetaAI:
     def __init__(self, game, side, other_side):
@@ -128,15 +249,18 @@ class AlphaBetaAI:
 
         assert len(pos_moves) > 0
 
+        global board_to_value
         for move in pos_moves:
             # Could depth be optimised by if we have to jump or use a specific piece as there are less options
             temp_game = self._game.copy(include_history=False)  # deepcopy(self._game)
             temp_game.make_move(deepcopy(move))
+            temp_game_string = temp_game.as_string()
             new_value = self.alphabeta(temp_game, 3, -inf, inf, temp_game.next_player == self._side, **kwargs) + \
                             random.random()
             if new_value >= best_value:
                 best_move = move
                 best_value = new_value
+            board_to_value[temp_game_string] = new_value
         assert best_move is not None
         return best_move
 
